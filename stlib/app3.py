@@ -2,11 +2,12 @@ description = "Time Series Visualization"
 
 # Your app goes in the function run()
 def run():
-        
+
     import streamlit as st
     import pandas as pd
-    import matplotlib.pyplot as plt 
+    import matplotlib.pyplot as plt
     import matplotlib
+
     matplotlib.use("Agg")
     import seaborn as sns
 
@@ -28,24 +29,24 @@ def run():
             st.write(df.describe())
 
         if st.checkbox("Show Selected Columns"):
-            selected_columns = st.multiselect("Select Columns",all_columns)
+            selected_columns = st.multiselect("Select Columns", all_columns)
             new_df = df[selected_columns]
             st.dataframe(new_df)
 
         if st.checkbox("Show Value Counts"):
-            st.write(df.iloc[:,-1].value_counts())
+            st.write(df.iloc[:, -1].value_counts())
 
         if st.checkbox("Correlation Plot(Matplotlib)"):
             plt.matshow(df.corr())
             st.pyplot()
 
         if st.checkbox("Correlation Plot(Seaborn)"):
-            st.write(sns.heatmap(df.corr(),annot=True))
+            st.write(sns.heatmap(df.corr(), annot=True))
             st.pyplot()
 
         if st.checkbox("Pie Plot"):
             all_columns = df.columns.to_list()
-            column_to_plot = st.selectbox("Select 1 Column",all_columns)
+            column_to_plot = st.selectbox("Select 1 Column", all_columns)
             pie_plot = df[column_to_plot].value_counts().plot.pie(autopct="%1.1f%%")
             st.write(pie_plot)
             st.pyplot()

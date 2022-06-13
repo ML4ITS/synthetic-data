@@ -5,6 +5,7 @@ scipy
 numpy
 bokeh==2.4.1
 matplotlib
+black
 seaborn
 timesynth
 
