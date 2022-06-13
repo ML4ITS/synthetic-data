@@ -1,1 +1,1 @@
-# synthetic-data
+# Synthetic-data Project
