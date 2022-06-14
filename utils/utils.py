@@ -29,3 +29,23 @@ def generate_signals(n_points=10):
 
 def convert_to_mfccs(wav, step, window):
     return mfcc(wav, 1, winstep=step, winlen=window, numcep=32)
+
+
+def df_to_csv(df):
+    return df.to_csv().encode("utf-8")
+
+
+def strtobool(val: str) -> bool:
+    """Convert a string representation of truth to true (1) or false (0).
+
+    True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
+    are 'n', 'no', 'f', 'false', 'off', and '0'.  Raises ValueError if
+    'val' is anything else.
+    """
+    val = val.lower()
+    if val in ("y", "yes", "t", "true", "on", "1"):
+        return True
+    elif val in ("n", "no", "f", "false", "off", "0"):
+        return False
+    else:
+        raise ValueError(f"Invalid truth value '{val}'")
