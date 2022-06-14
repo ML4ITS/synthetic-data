@@ -1,17 +1,19 @@
-import enum
+from typing import Tuple, Union, Dict, Any
+
 import timesynth as ts
 import streamlit as st
 import pandas as pd
 import numpy as np
 
-from timesynth.signals.gaussian_process import GaussianProcess
-from timesynth.signals.ar import AutoRegressive
-from timesynth.signals.car import CAR
-from timesynth.signals.narma import NARMA
-from timesynth.signals.sinusoidal import Sinusoidal
-from timesynth.signals.pseudoperiodic import PseudoPeriodic
-from timesynth.noise.gaussian_noise import GaussianNoise
+from streamlit.delta_generator import DeltaGenerator
 from timesynth.noise.red_noise import RedNoise
+from timesynth.noise.gaussian_noise import GaussianNoise
+from timesynth.signals.gaussian_process import GaussianProcess
+from timesynth.signals.pseudoperiodic import PseudoPeriodic
+from timesynth.signals.sinusoidal import Sinusoidal
+from timesynth.signals.ar import AutoRegressive
+from timesynth.signals.narma import NARMA
+from timesynth.signals.car import CAR
 
 from bokeh.plotting import figure
 from utils.utils import df_to_csv, strtobool
@@ -57,7 +59,9 @@ def get_gaussian_process_signal(**kwargs):
         return GaussianProcess(kernel=cov_function, p=kwargs.get("period"))
 
 
-def get_time_samples(stop_time, num_points, keep_percentage, is_irregular: bool):
+def get_time_samples(
+    stop_time: int, num_points: int, keep_percentage: int, is_irregular: bool
+) -> np.ndarray:
     time_sampler = ts.TimeSampler(stop_time=stop_time)
     if is_irregular:
         return time_sampler.sample_irregular_time(
@@ -66,27 +70,28 @@ def get_time_samples(stop_time, num_points, keep_percentage, is_irregular: bool)
     return time_sampler.sample_regular_time(num_points=num_points)
 
 
-def get_noise_by_type(std, noise_type):
+def get_noise_by_type(std: float, noise_type: str) -> Union[GaussianNoise, RedNoise]:
     if noise_type.lower() == "white":
         return GaussianNoise(std=std)
     elif noise_type.lower() == "red":
         return RedNoise(std=std)
-    else:
-        raise ValueError(f"Noise type '{noise_type}' is not supported!")
+    raise ValueError(f"Noise of type '{noise_type}' is not supported!")
 
 
 def generate_data(
-    process_type=ProccessType.Harmonic.value,
-    stop_time=1,
-    num_points=50,
-    keep_percentage=50,
-    irregular=True,
-    std_noise=0.3,
+    process_type: str = ProccessType.Harmonic.value,
+    stop_time: int = 1,
+    num_points: int = 50,
+    keep_percentage: int = 50,
+    irregular: bool = True,
+    std_noise: float = 0.3,
     **kwargs,
-):
+) -> Tuple[np.ndarray, np.ndarray]:
+
+    signal = None
 
     if process_type == ProccessType.Harmonic.value:
-        signal = Sinusoidal(frequency=kwargs.get("frequnecy"))
+        signal = Sinusoidal(frequency=kwargs.get("frequency"))
 
     if process_type == ProccessType.GaussianProcess.value:
         signal = get_gaussian_process_signal(**kwargs)
@@ -115,7 +120,9 @@ def generate_data(
     return time_samples, samples
 
 
-def plot_timeseries(container, time_samples, samples):
+def plot_timeseries(
+    container: DeltaGenerator, time_samples: np.ndarray, samples: np.ndarray
+) -> None:
     if not len(time_samples) > 0:
         return
 
@@ -142,7 +149,7 @@ def plot_timeseries(container, time_samples, samples):
 description = "Synthetic TS Generation"
 
 # Your app goes in the function run()
-def run():
+def run() -> None:
     st.subheader("Synthetic TS Generation")
     container = st.container()
 
@@ -153,13 +160,12 @@ def run():
         process_type = st.selectbox("Process type", process_types)
 
         num_points = st.slider("Number of points", 0, 1000, 100, 5)
-        num_timeseries = st.slider("Number of TS", 1, 1000, 1, 5)
+        num_timeseries = st.slider("Number of TS", 1, 1000, 1, 5)  # TODO: change?
         MAX_NUM_TIMESERIES = st.slider("Max number of TS to Plot", 1, 10, 1, 1)
 
         irregular = strtobool(st.radio("Irregular", ("True", "False")))
-
         keep_percentage = st.slider(
-            "Keep percentage",
+            "Keep",
             0,
             100,
             50,
@@ -170,18 +176,33 @@ def run():
         )
 
         noise_type = st.radio("Noise", ("White", "Red"))
-        std_noise = st.slider("Std of the noise", 0.0, 1.0, 0.3, 0.01)
+        std_noise = st.slider(
+            "Noise stdv", 0.0, 1.0, 0.3, 0.01, help="Standard deviation of the noise"
+        )
         time_samples, samples = [], []
 
+        """
+        
+        """
+
+        df = pd.DataFrame(columns=["ID", "x", "y"])
+        df_temp = pd.DataFrame(columns=["ID", "x", "y"])
         if process_type == ProccessType.Harmonic.value:
-            df = pd.DataFrame(columns=["ID", "x", "y"])
-            df_temp = pd.DataFrame(columns=["ID", "x", "y"])
-            st.write("Signal generator for harmonic (sinusoidal) waves")
             amplitude = st.slider(
-                "Amplitude - Amplitude of the harmonic series", 0.0, 10.0, 1.0, 0.1
+                "Amplitude",
+                0.0,
+                10.0,
+                1.0,
+                0.1,
+                help="Amplitude of the harmonic series",
             )
             frequency = st.slider(
-                "Frequency - Frequency of the harmonic series", 0.0, 100.0, 1.0, 0.1
+                "Frequency",
+                0.0,
+                100.0,
+                1.0,
+                0.1,
+                help="Frequency of the harmonic series",
             )
             for i in range(num_timeseries):
                 time_samples, samples = generate_data(
@@ -231,9 +252,8 @@ def run():
                     if i < MAX_NUM_TIMESERIES:
                         plot_timeseries(container, time_samples, samples)
 
-            if (
-                kernel == ProcessKernel.Constant.value
-            ):  # All covariances set to `variance`
+            if kernel == ProcessKernel.Constant.value:
+                # All covariances set to `variance`
                 variance = st.slider("variance", 0.0, 1.0, 1.0, 0.1)
                 for i in range(num_timeseries):
                     time_samples, samples = generate_data(
@@ -370,20 +390,38 @@ def run():
         if process_type == ProccessType.PseudoPeriodic.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
             df_temp = pd.DataFrame(columns=["ID", "x", "y"])
-            st.write(
-                "Signal generator for pseudoeriodic waves. (The wave's amplitude and frequency have some stochasticity that can be set manually.)"
-            )
+
             amplitude = st.slider(
-                "amplitude - Amplitude of the harmonic series", 0.0, 10.0, 1.0, 0.1
-            )
-            frequency = st.slider(
-                "Frequency - Frequency of the harmonic series", 0.0, 100.0, 1.0, 0.5
+                "Amplitude",
+                0.0,
+                10.0,
+                1.0,
+                0.1,
+                help="Amplitude of the harmonic series",
             )
             ampSD = st.slider(
-                "ampSD - Amplitude standard deviation", 0.0, 1.0, 0.1, 0.01
+                "Amplitude stdv",
+                0.0,
+                1.0,
+                0.1,
+                0.01,
+                help="Amplitude standard deviation",
+            )
+            frequency = st.slider(
+                "Frequency",
+                0.0,
+                100.0,
+                1.0,
+                0.5,
+                help="Frequency of the harmonic series",
             )
             freqSD = st.slider(
-                "freqSD - Frequency standard deviation", 0.0, 1.0, 0.1, 0.01
+                "Frequency stdv",
+                0.0,
+                1.0,
+                0.1,
+                0.01,
+                help="Frequency standard deviation",
             )
 
             for i in range(num_timeseries):
@@ -494,9 +532,9 @@ def run():
                     plot_timeseries(container, time_samples, samples)
 
         # ..
-        csv = df_to_csv(df)
+        dfcsv = df_to_csv(df)
         st.download_button(
-            "Press to Download", csv, "data.csv", "text/csv", key="download-csv"
+            "Press to Download", dfcsv, "data.csv", "text/csv", key="download-csv"
         )
 
 
