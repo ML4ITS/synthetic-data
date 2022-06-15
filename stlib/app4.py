@@ -160,7 +160,7 @@ def run() -> None:
         process_type = st.selectbox("Process type", process_types)
 
         num_points = st.slider("Number of points", 0, 1000, 100, 5)
-        num_timeseries = st.slider("Number of TS", 1, 1000, 1, 5)  # TODO: change?
+        num_timeseries = st.slider("Number of TS", 1, 1000, 5, 5)  # TODO: change?
         MAX_NUM_TIMESERIES = st.slider("Max number of TS to Plot", 1, 10, 1, 1)
 
         irregular = strtobool(st.radio("Irregular", ("True", "False")))
@@ -207,7 +207,7 @@ def run() -> None:
             for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
-                    num_points=num_points * 2,
+                    num_points=num_points,
                     irregular=irregular,
                     keep_percentage=keep_percentage,
                     std_noise=std_noise,
@@ -236,7 +236,7 @@ def run() -> None:
                 for i in range(num_timeseries):
                     time_samples, samples = generate_data(
                         process_type=process_type,
-                        num_points=num_points * 2,
+                        num_points=num_points,
                         irregular=irregular,
                         keep_percentage=keep_percentage,
                         std_noise=std_noise,
@@ -258,7 +258,7 @@ def run() -> None:
                 for i in range(num_timeseries):
                     time_samples, samples = generate_data(
                         process_type=process_type,
-                        num_points=num_points * 2,
+                        num_points=num_points,
                         irregular=irregular,
                         keep_percentage=keep_percentage,
                         std_noise=std_noise,
@@ -280,7 +280,7 @@ def run() -> None:
                 for i in range(num_timeseries):
                     time_samples, samples = generate_data(
                         process_type=process_type,
-                        num_points=num_points * 2,
+                        num_points=num_points,
                         irregular=irregular,
                         keep_percentage=keep_percentage,
                         std_noise=std_noise,
@@ -302,7 +302,7 @@ def run() -> None:
                 for i in range(num_timeseries):
                     time_samples, samples = generate_data(
                         process_type=process_type,
-                        num_points=num_points * 2,
+                        num_points=num_points,
                         irregular=irregular,
                         keep_percentage=keep_percentage,
                         std_noise=std_noise,
@@ -325,7 +325,7 @@ def run() -> None:
                 for i in range(num_timeseries):
                     time_samples, samples = generate_data(
                         process_type=process_type,
-                        num_points=num_points * 2,
+                        num_points=num_points,
                         irregular=irregular,
                         keep_percentage=keep_percentage,
                         std_noise=std_noise,
@@ -348,7 +348,7 @@ def run() -> None:
                 for i in range(num_timeseries):
                     time_samples, samples = generate_data(
                         process_type=process_type,
-                        num_points=num_points * 2,
+                        num_points=num_points,
                         irregular=irregular,
                         keep_percentage=keep_percentage,
                         std_noise=std_noise,
@@ -370,7 +370,7 @@ def run() -> None:
                 for i in range(num_timeseries):
                     time_samples, samples = generate_data(
                         process_type=process_type,
-                        num_points=num_points * 2,
+                        num_points=num_points,
                         irregular=irregular,
                         keep_percentage=keep_percentage,
                         std_noise=std_noise,
@@ -427,7 +427,7 @@ def run() -> None:
             for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
-                    num_points=num_points * 2,
+                    num_points=num_points,
                     irregular=irregular,
                     keep_percentage=keep_percentage,
                     std_noise=std_noise,
@@ -463,7 +463,7 @@ def run() -> None:
             for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
-                    num_points=num_points * 2,
+                    num_points=num_points,
                     irregular=False,
                     std_noise=std_noise,
                     noise_type=noise_type,
@@ -489,7 +489,7 @@ def run() -> None:
             for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
-                    num_points=num_points * 2,
+                    num_points=num_points,
                     irregular=False,
                     std_noise=std_noise,
                     noise_type=noise_type,
@@ -515,7 +515,7 @@ def run() -> None:
             for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
-                    num_points=num_points * 2,
+                    num_points=num_points,
                     irregular=False,
                     std_noise=std_noise,
                     noise_type=noise_type,
