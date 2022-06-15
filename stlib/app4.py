@@ -1,4 +1,4 @@
-from typing import Tuple, Union, Dict, Any
+from typing import List, Tuple, Union, Dict, Any
 
 import timesynth as ts
 import streamlit as st
@@ -20,7 +20,7 @@ from utils.utils import df_to_csv, strtobool
 from enum import Enum
 
 
-class ProccessType(Enum):
+class ProcessType(Enum):
     Harmonic = "Harmonic"
     GaussianProcess = "GaussianProcess"
     PseudoPeriodic = "PseudoPeriodic"
@@ -79,7 +79,7 @@ def get_noise_by_type(std: float, noise_type: str) -> Union[GaussianNoise, RedNo
 
 
 def generate_data(
-    process_type: str = ProccessType.Harmonic.value,
+    process_type: str = ProcessType.Harmonic.value,
     stop_time: int = 1,
     num_points: int = 50,
     keep_percentage: int = 50,
@@ -90,30 +90,30 @@ def generate_data(
 
     signal = None
 
-    if process_type == ProccessType.Harmonic.value:
+    if process_type == ProcessType.Harmonic.value:
         signal = Sinusoidal(frequency=kwargs.get("frequency"))
 
-    if process_type == ProccessType.GaussianProcess.value:
+    if process_type == ProcessType.GaussianProcess.value:
         signal = get_gaussian_process_signal(**kwargs)
 
-    if process_type == ProccessType.PseudoPeriodic.value:
+    if process_type == ProcessType.PseudoPeriodic.value:
         signal = PseudoPeriodic(
             frequency=kwargs.get("frequency"),
             freqSD=kwargs.get("freqSD"),
             ampSD=kwargs.get("ampSD"),
         )
 
-    if process_type == ProccessType.AutoRegressive.value:
+    if process_type == ProcessType.AutoRegressive.value:
         signal = AutoRegressive(ar_param=kwargs.get("ar_param"), sigma=std_noise)
 
-    if process_type == ProccessType.CAR.value:
+    if process_type == ProcessType.CAR.value:
         signal = CAR(ar_param=kwargs.get("ar_param"), sigma=std_noise)
 
-    if process_type == ProccessType.NARMA.value:
+    if process_type == ProcessType.NARMA.value:
         signal = NARMA(order=kwargs.get("order"))
 
     time_samples = get_time_samples(stop_time, num_points, keep_percentage, irregular)
-    noise = get_noise_by_type(std_noise, kwargs.get("noise_type"))
+    noise = get_noise_by_type(std=std_noise, noise_type=kwargs.get("noise_type"))
 
     timeseries = ts.TimeSeries(signal, noise_generator=noise)
     samples, _, _ = timeseries.sample(time_samples)
@@ -156,7 +156,7 @@ def run() -> None:
     with st.sidebar:
         st.write("-------------------------")
 
-        process_types = tuple(ProccessType.__members__.keys())
+        process_types = tuple(ProcessType.__members__.keys())
         process_type = st.selectbox("Process type", process_types)
 
         num_points = st.slider("Number of points", 0, 1000, 100, 5)
@@ -168,26 +168,33 @@ def run() -> None:
             "Keep",
             0,
             100,
-            50,
+            100,
             5,
             format="%d%%",
             help="Percentage of points to be retained in the irregular series",
             disabled=not irregular,
         )
 
-        noise_type = st.radio("Noise", ("White", "Red"))
+        # TODO: factorize this
+        not_rednoise_supported = [
+            ProcessType.NARMA.value,
+            ProcessType.GaussianProcess.value,
+        ]
+        if process_type in not_rednoise_supported:
+            noise_type = st.radio("Noise", ("White", "Red"), disabled=True)
+            noise_type = "White"
+        else:
+            noise_type = st.radio("Noise", ("White", "Red"), disabled=False)
+
         std_noise = st.slider(
             "Noise stdv", 0.0, 1.0, 0.3, 0.01, help="Standard deviation of the noise"
         )
         time_samples, samples = [], []
 
-        """
-        
-        """
-
         df = pd.DataFrame(columns=["ID", "x", "y"])
         df_temp = pd.DataFrame(columns=["ID", "x", "y"])
-        if process_type == ProccessType.Harmonic.value:
+
+        if process_type == ProcessType.Harmonic.value:
             amplitude = st.slider(
                 "Amplitude",
                 0.0,
@@ -224,7 +231,7 @@ def run() -> None:
                 if i < MAX_NUM_TIMESERIES:
                     plot_timeseries(container, time_samples, samples)
 
-        if process_type == ProccessType.GaussianProcess.value:
+        if process_type == ProcessType.GaussianProcess.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
             df_temp = pd.DataFrame(columns=["ID", "x", "y"])
 
@@ -387,7 +394,7 @@ def run() -> None:
                     if i < MAX_NUM_TIMESERIES:
                         plot_timeseries(container, time_samples, samples)
 
-        if process_type == ProccessType.PseudoPeriodic.value:
+        if process_type == ProcessType.PseudoPeriodic.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
             df_temp = pd.DataFrame(columns=["ID", "x", "y"])
 
@@ -447,7 +454,7 @@ def run() -> None:
                 if i < MAX_NUM_TIMESERIES:
                     plot_timeseries(container, time_samples, samples)
 
-        if process_type == ProccessType.AutoRegressive.value:
+        if process_type == ProcessType.AutoRegressive.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
             df_temp = pd.DataFrame(columns=["ID", "x", "y"])
             st.write("Signal generator for autoregressive (AR2) signals")
@@ -479,7 +486,7 @@ def run() -> None:
                 if i < MAX_NUM_TIMESERIES:
                     plot_timeseries(container, time_samples, samples)
 
-        if process_type == ProccessType.CAR.value:
+        if process_type == ProcessType.CAR.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
             df_temp = pd.DataFrame(columns=["ID", "x", "y"])
             st.write("Signal generator for continuously autoregressive (CAR) signals")
@@ -505,7 +512,7 @@ def run() -> None:
                 if i < MAX_NUM_TIMESERIES:
                     plot_timeseries(container, time_samples, samples)
 
-        if process_type == ProccessType.NARMA.value:
+        if process_type == ProcessType.NARMA.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
             df_temp = pd.DataFrame(columns=["ID", "x", "y"])
             st.write("Non-linear Autoregressive Moving Average generator")
