@@ -70,14 +70,6 @@ def get_time_samples(
     return time_sampler.sample_regular_time(num_points=num_points)
 
 
-def get_noise_by_type(std: float, noise_type: str) -> Union[GaussianNoise, RedNoise]:
-    if noise_type.lower() == "white":
-        return GaussianNoise(std=std)
-    elif noise_type.lower() == "red":
-        return RedNoise(std=std)
-    raise ValueError(f"Noise of type '{noise_type}' is not supported!")
-
-
 def generate_data(
     process_type: str = ProcessType.Harmonic.value,
     stop_time: int = 1,
@@ -113,7 +105,7 @@ def generate_data(
         signal = NARMA(order=kwargs.get("order"))
 
     time_samples = get_time_samples(stop_time, num_points, keep_percentage, irregular)
-    noise = get_noise_by_type(std=std_noise, noise_type=kwargs.get("noise_type"))
+    noise = GaussianNoise(std=std_noise)  # we only use the white noise
 
     timeseries = ts.TimeSeries(signal, noise_generator=noise)
     samples, _, _ = timeseries.sample(time_samples)
@@ -146,15 +138,13 @@ def plot_timeseries(
     container.bokeh_chart(fig, use_container_width=True)
 
 
-description = "Synthetic TS Generation"
-
 # Your app goes in the function run()
 def run() -> None:
-    st.subheader("Synthetic TS Generation")
+    st.subheader("Synthetic Time-Series Generation")
     container = st.container()
 
     with st.sidebar:
-        st.write("-------------------------")
+        st.sidebar.header("Configuration")
 
         process_types = tuple(ProcessType.__members__.keys())
         process_type = st.selectbox("Process type", process_types)
@@ -163,7 +153,7 @@ def run() -> None:
         num_timeseries = st.slider("Number of TS", 1, 1000, 5, 5)  # TODO: change?
         MAX_NUM_TIMESERIES = st.slider("Max number of TS to Plot", 1, 10, 1, 1)
 
-        irregular = strtobool(st.radio("Irregular", ("True", "False")))
+        irregular = strtobool(st.radio("Irregular", ("True", "False"), horizontal=True))
         keep_percentage = st.slider(
             "Keep",
             0,
@@ -175,19 +165,13 @@ def run() -> None:
             disabled=not irregular,
         )
 
-        # TODO: factorize this
-        not_rednoise_supported = [
-            ProcessType.NARMA.value,
-            ProcessType.GaussianProcess.value,
-        ]
-        if process_type in not_rednoise_supported:
-            noise_type = st.radio("Noise", ("White", "Red"), disabled=True)
-            noise_type = "White"
-        else:
-            noise_type = st.radio("Noise", ("White", "Red"), disabled=False)
-
         std_noise = st.slider(
-            "Noise stdv", 0.0, 1.0, 0.3, 0.01, help="Standard deviation of the noise"
+            "Noise stdv",
+            0.0,
+            1.0,
+            0.3,
+            0.01,
+            help="Standard deviation of the white noise",
         )
         time_samples, samples = [], []
 
@@ -219,7 +203,6 @@ def run() -> None:
                     keep_percentage=keep_percentage,
                     std_noise=std_noise,
                     frequency=frequency,
-                    noise_type=noise_type,
                 )
 
                 df_temp.x = time_samples
@@ -248,7 +231,6 @@ def run() -> None:
                         keep_percentage=keep_percentage,
                         std_noise=std_noise,
                         kernel=kernel,
-                        noise_type=noise_type,
                     )
                     df_temp.x = time_samples
                     df_temp.y = samples
@@ -271,7 +253,6 @@ def run() -> None:
                         std_noise=std_noise,
                         kernel=kernel,
                         variance=variance,
-                        noise_type=noise_type,
                     )
                     df_temp.x = time_samples
                     df_temp.y = samples
@@ -293,7 +274,6 @@ def run() -> None:
                         std_noise=std_noise,
                         kernel=kernel,
                         gamma=gamma,
-                        noise_type=noise_type,
                     )
                     df_temp.x = time_samples
                     df_temp.y = samples
@@ -315,7 +295,6 @@ def run() -> None:
                         std_noise=std_noise,
                         kernel=kernel,
                         alpha=alpha,
-                        noise_type=noise_type,
                     )
                     df_temp.x = time_samples
                     df_temp.y = samples
@@ -339,7 +318,6 @@ def run() -> None:
                         kernel=kernel,
                         c=c,
                         offset=offset,
-                        noise_type=noise_type,
                     )
                     df_temp.x = time_samples
                     df_temp.y = samples
@@ -361,7 +339,6 @@ def run() -> None:
                         std_noise=std_noise,
                         kernel=kernel,
                         nu=nu,
-                        noise_type=noise_type,
                     )
                     df_temp.x = time_samples
                     df_temp.y = samples
@@ -383,7 +360,6 @@ def run() -> None:
                         std_noise=std_noise,
                         kernel=kernel,
                         period=period,
-                        noise_type=noise_type,
                     )
                     df_temp.x = time_samples
                     df_temp.y = samples
@@ -442,7 +418,6 @@ def run() -> None:
                     freqSD=freqSD,
                     ampSD=ampSD,
                     amplitude=amplitude,
-                    noise_type=noise_type,
                 )
 
                 df_temp.x = time_samples
@@ -457,7 +432,6 @@ def run() -> None:
         if process_type == ProcessType.AutoRegressive.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
             df_temp = pd.DataFrame(columns=["ID", "x", "y"])
-            st.write("Signal generator for autoregressive (AR2) signals")
             use_ar2 = st.checkbox("Use AR2, else AR1")
             phi_1 = st.slider(f"phi_1", 0.0, 2.0, 1.0, 0.1)
             phi_2 = st.slider(f"phi_2", 0.0, 2.0, 1.0, 0.1, disabled=not use_ar2)
@@ -473,7 +447,6 @@ def run() -> None:
                     num_points=num_points,
                     irregular=False,
                     std_noise=std_noise,
-                    noise_type=noise_type,
                     ar_param=ar_param,
                 )
 
@@ -489,7 +462,6 @@ def run() -> None:
         if process_type == ProcessType.CAR.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
             df_temp = pd.DataFrame(columns=["ID", "x", "y"])
-            st.write("Signal generator for continuously autoregressive (CAR) signals")
             ar_param = st.slider(
                 f"ar_param", 0.0, 2.0, 1.0, 0.1, help="Parameter of the AR(1) process"
             )
@@ -499,7 +471,6 @@ def run() -> None:
                     num_points=num_points,
                     irregular=False,
                     std_noise=std_noise,
-                    noise_type=noise_type,
                     ar_param=ar_param,
                 )
 
@@ -515,7 +486,6 @@ def run() -> None:
         if process_type == ProcessType.NARMA.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
             df_temp = pd.DataFrame(columns=["ID", "x", "y"])
-            st.write("Non-linear Autoregressive Moving Average generator")
             order = st.slider("order", 1, 10, 3, 1, help="Order of the NARMA process")
             coefficients = None  # TODO: implement?
             initial_condition = None  # TODO: implement?
@@ -525,7 +495,6 @@ def run() -> None:
                     num_points=num_points,
                     irregular=False,
                     std_noise=std_noise,
-                    noise_type=noise_type,
                     order=order,
                 )
 
