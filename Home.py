@@ -2,8 +2,8 @@ import streamlit as st
 
 
 def run():
-    st.set_page_config(page_title="STS", page_icon="🌀")
-    st.write("# Synthetic TS")
+    st.set_page_config(page_title="STS", page_icon="🌀", layout="wide")
+    st.write("# Synthetic Time-Series")
     st.write("This page intentionally left blank. Ideas?")
 
 

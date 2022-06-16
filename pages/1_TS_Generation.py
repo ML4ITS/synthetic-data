@@ -15,8 +15,8 @@ from timesynth.signals.ar import AutoRegressive
 from timesynth.signals.narma import NARMA
 from timesynth.signals.car import CAR
 
-from bokeh.plotting import figure
-from utils.utils import df_to_csv, strtobool
+from db.database import save_time_series
+from utils.utils import strtobool, plot_timeseries
 from enum import Enum
 
 
@@ -112,32 +112,6 @@ def generate_data(
     return time_samples, samples
 
 
-def plot_timeseries(
-    container: DeltaGenerator, time_samples: np.ndarray, samples: np.ndarray
-) -> None:
-    if not len(time_samples) > 0:
-        return
-
-    fig = figure(
-        title="TS",
-        x_axis_label="x",
-        y_axis_label="y",
-        max_height=300,
-        height_policy="max",
-    )
-
-    fig.line(time_samples, samples, legend_label="Regular", line_width=2)
-    fig.circle(
-        time_samples,
-        samples,
-        legend_label="Regular",
-        line_width=2,
-        fill_color="blue",
-        size=5,
-    )
-    container.bokeh_chart(fig, use_container_width=True)
-
-
 # Your app goes in the function run()
 def run() -> None:
     st.subheader("Synthetic Time-Series Generation")
@@ -149,9 +123,9 @@ def run() -> None:
         process_types = tuple(ProcessType.__members__.keys())
         process_type = st.selectbox("Process type", process_types)
 
-        num_points = st.slider("Number of points", 0, 1000, 100, 5)
-        num_timeseries = st.slider("Number of TS", 1, 1000, 5, 5)  # TODO: change?
-        MAX_NUM_TIMESERIES = st.slider("Max number of TS to Plot", 1, 10, 1, 1)
+        num_points = st.slider("Number of points", 0, 2500, 100, 5)
+        # num_timeseries = st.slider("Number of TS", 1, 1000, 5, 5)  # TODO: change?
+        # MAX_NUM_TIMESERIES = st.slider("Max number of TS to Plot", 1, 10, 1, 1)
 
         irregular = strtobool(st.radio("Irregular", ("True", "False"), horizontal=True))
         keep_percentage = st.slider(
@@ -175,8 +149,8 @@ def run() -> None:
         )
         time_samples, samples = [], []
 
-        df = pd.DataFrame(columns=["ID", "x", "y"])
-        df_temp = pd.DataFrame(columns=["ID", "x", "y"])
+        df = pd.DataFrame(columns=["x", "y"])  # "ID", "x", "y"]
+        df_temp = pd.DataFrame(columns=["x", "y"])  # "ID", "x", "y"]
 
         if process_type == ProcessType.Harmonic.value:
             amplitude = st.slider(
@@ -195,24 +169,19 @@ def run() -> None:
                 0.1,
                 help="Frequency of the harmonic series",
             )
-            for i in range(num_timeseries):
-                time_samples, samples = generate_data(
-                    process_type=process_type,
-                    num_points=num_points,
-                    irregular=irregular,
-                    keep_percentage=keep_percentage,
-                    std_noise=std_noise,
-                    frequency=frequency,
-                )
-
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df_temp.ID = np.full(len(samples), i)
-
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                if i < MAX_NUM_TIMESERIES:
-                    plot_timeseries(container, time_samples, samples)
+            # for i in range(num_timeseries):
+            time_samples, samples = generate_data(
+                process_type=process_type,
+                num_points=num_points,
+                irregular=irregular,
+                keep_percentage=keep_percentage,
+                std_noise=std_noise,
+                frequency=frequency,
+            )
+            df_temp.x = time_samples
+            df_temp.y = samples
+            df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+            plot_timeseries(process_type, container, time_samples, samples)
 
         if process_type == ProcessType.GaussianProcess.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
@@ -223,152 +192,125 @@ def run() -> None:
 
             if kernel == ProcessKernel.SE.value:
                 # the squared exponential
-                for i in range(num_timeseries):
-                    time_samples, samples = generate_data(
-                        process_type=process_type,
-                        num_points=num_points,
-                        irregular=irregular,
-                        keep_percentage=keep_percentage,
-                        std_noise=std_noise,
-                        kernel=kernel,
-                    )
-                    df_temp.x = time_samples
-                    df_temp.y = samples
-                    df_temp.ID = np.full(len(samples), i)
-
-                    df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                    if i < MAX_NUM_TIMESERIES:
-                        plot_timeseries(container, time_samples, samples)
+                # for i in range(num_timeseries):
+                time_samples, samples = generate_data(
+                    process_type=process_type,
+                    num_points=num_points,
+                    irregular=irregular,
+                    keep_percentage=keep_percentage,
+                    std_noise=std_noise,
+                    kernel=kernel,
+                )
+                df_temp.x = time_samples
+                df_temp.y = samples
+                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+                plot_timeseries(process_type, container, time_samples, samples)
 
             if kernel == ProcessKernel.Constant.value:
                 # All covariances set to `variance`
                 variance = st.slider("variance", 0.0, 1.0, 1.0, 0.1)
-                for i in range(num_timeseries):
-                    time_samples, samples = generate_data(
-                        process_type=process_type,
-                        num_points=num_points,
-                        irregular=irregular,
-                        keep_percentage=keep_percentage,
-                        std_noise=std_noise,
-                        kernel=kernel,
-                        variance=variance,
-                    )
-                    df_temp.x = time_samples
-                    df_temp.y = samples
-                    df_temp.ID = np.full(len(samples), i)
-
-                    df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                    if i < MAX_NUM_TIMESERIES:
-                        plot_timeseries(container, time_samples, samples)
+                # for i in range(num_timeseries):
+                time_samples, samples = generate_data(
+                    process_type=process_type,
+                    num_points=num_points,
+                    irregular=irregular,
+                    keep_percentage=keep_percentage,
+                    std_noise=std_noise,
+                    kernel=kernel,
+                    variance=variance,
+                )
+                df_temp.x = time_samples
+                df_temp.y = samples
+                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+                plot_timeseries(process_type, container, time_samples, samples)
 
             if kernel == ProcessKernel.Exponential.value:
                 gamma = st.slider("gamma", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                for i in range(num_timeseries):
-                    time_samples, samples = generate_data(
-                        process_type=process_type,
-                        num_points=num_points,
-                        irregular=irregular,
-                        keep_percentage=keep_percentage,
-                        std_noise=std_noise,
-                        kernel=kernel,
-                        gamma=gamma,
-                    )
-                    df_temp.x = time_samples
-                    df_temp.y = samples
-                    df_temp.ID = np.full(len(samples), i)
-
-                    df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                    if i < MAX_NUM_TIMESERIES:
-                        plot_timeseries(container, time_samples, samples)
+                # for i in range(num_timeseries):
+                time_samples, samples = generate_data(
+                    process_type=process_type,
+                    num_points=num_points,
+                    irregular=irregular,
+                    keep_percentage=keep_percentage,
+                    std_noise=std_noise,
+                    kernel=kernel,
+                    gamma=gamma,
+                )
+                df_temp.x = time_samples
+                df_temp.y = samples
+                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+                plot_timeseries(process_type, container, time_samples, samples)
 
             if kernel == ProcessKernel.RQ.value:
                 alpha = st.slider("alpha", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                for i in range(num_timeseries):
-                    time_samples, samples = generate_data(
-                        process_type=process_type,
-                        num_points=num_points,
-                        irregular=irregular,
-                        keep_percentage=keep_percentage,
-                        std_noise=std_noise,
-                        kernel=kernel,
-                        alpha=alpha,
-                    )
-                    df_temp.x = time_samples
-                    df_temp.y = samples
-                    df_temp.ID = np.full(len(samples), i)
-
-                    df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                    if i < MAX_NUM_TIMESERIES:
-                        plot_timeseries(container, time_samples, samples)
+                # for i in range(num_timeseries):
+                time_samples, samples = generate_data(
+                    process_type=process_type,
+                    num_points=num_points,
+                    irregular=irregular,
+                    keep_percentage=keep_percentage,
+                    std_noise=std_noise,
+                    kernel=kernel,
+                    alpha=alpha,
+                )
+                df_temp.x = time_samples
+                df_temp.y = samples
+                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+                plot_timeseries(process_type, container, time_samples, samples)
 
             if kernel == ProcessKernel.Linear.value:
                 c = st.slider("c", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
                 offset = st.slider("offset", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                for i in range(num_timeseries):
-                    time_samples, samples = generate_data(
-                        process_type=process_type,
-                        num_points=num_points,
-                        irregular=irregular,
-                        keep_percentage=keep_percentage,
-                        std_noise=std_noise,
-                        kernel=kernel,
-                        c=c,
-                        offset=offset,
-                    )
-                    df_temp.x = time_samples
-                    df_temp.y = samples
-                    df_temp.ID = np.full(len(samples), i)
-
-                    df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                    if i < MAX_NUM_TIMESERIES:
-                        plot_timeseries(container, time_samples, samples)
+                # for i in range(num_timeseries):
+                time_samples, samples = generate_data(
+                    process_type=process_type,
+                    num_points=num_points,
+                    irregular=irregular,
+                    keep_percentage=keep_percentage,
+                    std_noise=std_noise,
+                    kernel=kernel,
+                    c=c,
+                    offset=offset,
+                )
+                df_temp.x = time_samples
+                df_temp.y = samples
+                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+                plot_timeseries(process_type, container, time_samples, samples)
+                plot_timeseries(process_type, container, time_samples, samples)
 
             if kernel == ProcessKernel.Matern.value:
                 nu = st.slider("nu", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                for i in range(num_timeseries):
-                    time_samples, samples = generate_data(
-                        process_type=process_type,
-                        num_points=num_points,
-                        irregular=irregular,
-                        keep_percentage=keep_percentage,
-                        std_noise=std_noise,
-                        kernel=kernel,
-                        nu=nu,
-                    )
-                    df_temp.x = time_samples
-                    df_temp.y = samples
-                    df_temp.ID = np.full(len(samples), i)
-
-                    df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                    if i < MAX_NUM_TIMESERIES:
-                        plot_timeseries(container, time_samples, samples)
+                # for i in range(num_timeseries):
+                time_samples, samples = generate_data(
+                    process_type=process_type,
+                    num_points=num_points,
+                    irregular=irregular,
+                    keep_percentage=keep_percentage,
+                    std_noise=std_noise,
+                    kernel=kernel,
+                    nu=nu,
+                )
+                df_temp.x = time_samples
+                df_temp.y = samples
+                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+                plot_timeseries(process_type, container, time_samples, samples)
 
             if kernel == ProcessKernel.Periodic.value:
                 period = st.slider("period", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                for i in range(num_timeseries):
-                    time_samples, samples = generate_data(
-                        process_type=process_type,
-                        num_points=num_points,
-                        irregular=irregular,
-                        keep_percentage=keep_percentage,
-                        std_noise=std_noise,
-                        kernel=kernel,
-                        period=period,
-                    )
-                    df_temp.x = time_samples
-                    df_temp.y = samples
-                    df_temp.ID = np.full(len(samples), i)
-
-                    df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                    if i < MAX_NUM_TIMESERIES:
-                        plot_timeseries(container, time_samples, samples)
+                # for i in range(num_timeseries):
+                time_samples, samples = generate_data(
+                    process_type=process_type,
+                    num_points=num_points,
+                    irregular=irregular,
+                    keep_percentage=keep_percentage,
+                    std_noise=std_noise,
+                    kernel=kernel,
+                    period=period,
+                )
+                df_temp.x = time_samples
+                df_temp.y = samples
+                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+                plot_timeseries(process_type, container, time_samples, samples)
 
         if process_type == ProcessType.PseudoPeriodic.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
@@ -407,27 +349,23 @@ def run() -> None:
                 help="Frequency standard deviation",
             )
 
-            for i in range(num_timeseries):
-                time_samples, samples = generate_data(
-                    process_type=process_type,
-                    num_points=num_points,
-                    irregular=irregular,
-                    keep_percentage=keep_percentage,
-                    std_noise=std_noise,
-                    frequency=frequency,
-                    freqSD=freqSD,
-                    ampSD=ampSD,
-                    amplitude=amplitude,
-                )
+            # for i in range(num_timeseries):
+            time_samples, samples = generate_data(
+                process_type=process_type,
+                num_points=num_points,
+                irregular=irregular,
+                keep_percentage=keep_percentage,
+                std_noise=std_noise,
+                frequency=frequency,
+                freqSD=freqSD,
+                ampSD=ampSD,
+                amplitude=amplitude,
+            )
 
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df_temp.ID = np.full(len(samples), i)
-
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                if i < MAX_NUM_TIMESERIES:
-                    plot_timeseries(container, time_samples, samples)
+            df_temp.x = time_samples
+            df_temp.y = samples
+            df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+            plot_timeseries(process_type, container, time_samples, samples)
 
         if process_type == ProcessType.AutoRegressive.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
@@ -441,23 +379,19 @@ def run() -> None:
             else:
                 ar_param = [phi_1]
 
-            for i in range(num_timeseries):
-                time_samples, samples = generate_data(
-                    process_type=process_type,
-                    num_points=num_points,
-                    irregular=False,
-                    std_noise=std_noise,
-                    ar_param=ar_param,
-                )
+            # for i in range(num_timeseries):
+            time_samples, samples = generate_data(
+                process_type=process_type,
+                num_points=num_points,
+                irregular=False,
+                std_noise=std_noise,
+                ar_param=ar_param,
+            )
 
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df_temp.ID = np.full(len(samples), i)
-
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                if i < MAX_NUM_TIMESERIES:
-                    plot_timeseries(container, time_samples, samples)
+            df_temp.x = time_samples
+            df_temp.y = samples
+            df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+            plot_timeseries(process_type, container, time_samples, samples)
 
         if process_type == ProcessType.CAR.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
@@ -465,23 +399,19 @@ def run() -> None:
             ar_param = st.slider(
                 f"ar_param", 0.0, 2.0, 1.0, 0.1, help="Parameter of the AR(1) process"
             )
-            for i in range(num_timeseries):
-                time_samples, samples = generate_data(
-                    process_type=process_type,
-                    num_points=num_points,
-                    irregular=False,
-                    std_noise=std_noise,
-                    ar_param=ar_param,
-                )
+            # for i in range(num_timeseries):
+            time_samples, samples = generate_data(
+                process_type=process_type,
+                num_points=num_points,
+                irregular=False,
+                std_noise=std_noise,
+                ar_param=ar_param,
+            )
 
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df_temp.ID = np.full(len(samples), i)
-
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                if i < MAX_NUM_TIMESERIES:
-                    plot_timeseries(container, time_samples, samples)
+            df_temp.x = time_samples
+            df_temp.y = samples
+            df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+            plot_timeseries(process_type, container, time_samples, samples)
 
         if process_type == ProcessType.NARMA.value:
             df = pd.DataFrame(columns=["ID", "x", "y"])
@@ -489,29 +419,30 @@ def run() -> None:
             order = st.slider("order", 1, 10, 3, 1, help="Order of the NARMA process")
             coefficients = None  # TODO: implement?
             initial_condition = None  # TODO: implement?
-            for i in range(num_timeseries):
-                time_samples, samples = generate_data(
-                    process_type=process_type,
-                    num_points=num_points,
-                    irregular=False,
-                    std_noise=std_noise,
-                    order=order,
-                )
+            # for i in range(num_timeseries):
+            time_samples, samples = generate_data(
+                process_type=process_type,
+                num_points=num_points,
+                irregular=False,
+                std_noise=std_noise,
+                order=order,
+            )
 
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df_temp.ID = np.full(len(samples), i)
+            df_temp.x = time_samples
+            df_temp.y = samples
+            df = pd.concat([df, df_temp], axis=0, ignore_index=True)
+            plot_timeseries(process_type, container, time_samples, samples)
 
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-
-                if i < MAX_NUM_TIMESERIES:
-                    plot_timeseries(container, time_samples, samples)
-
-        # ..
-        dfcsv = df_to_csv(df)
-        st.download_button(
-            "Press to Download", dfcsv, "data.csv", "text/csv", key="download-csv"
-        )
+        # Save to MongoDB
+        st.sidebar.header("Save to MongoDB")
+        collection_name = "time_series"
+        document_name = st.text_input("Document name", "")
+        save_db = st.button("Save")
+        if save_db and document_name:
+            doc_id = save_time_series(
+                col_name=collection_name, doc_name=document_name, time_series=df
+            )
+            st.success("Saved document!")
 
 
 if __name__ == "__main__":
