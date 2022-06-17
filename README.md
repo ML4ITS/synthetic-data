@@ -11,10 +11,6 @@ streamlit run Home.py
 ```
 
 ## Running Streamlit (Dockerized)
-```bash
-docker-compose up
+```python
+docker-compose up (or docker compose up)
 ```
-
-### Format
-
-Run `docker-compose run streamlit black src/`
