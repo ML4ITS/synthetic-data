@@ -17,19 +17,20 @@ def get_datasets(limit: int = 100) -> List[dict]:
     return list(items)  # make hashable for st.experimental_memo
 
 
-def save_time_series(doc_name: str, time_series: pd.DataFrame) -> int:
-    document = df_to_document(doc_name=doc_name, df=time_series)
+def save_time_series(doc_name: str, time_series: pd.DataFrame, parameters: dict) -> int:
+    document = df_to_document(doc_name=doc_name, df=time_series, parameters=parameters)
     db = db_client[Database.NAME.value]
     collection = db[DatabaseCollection.DATASETS.value]
     document_id = collection.insert_one(document)
     return document_id
 
 
-def df_to_document(doc_name: str, df: pd.DataFrame) -> dict:
+def df_to_document(doc_name: str, df: pd.DataFrame, parameters: dict) -> dict:
     # TimeSeriesDocument TODO: add more fields?
     return {
         "name": doc_name,
         "last_modified": datetime.utcnow(),
         "x": df["x"].tolist(),
         "y": df["y"].tolist(),
+        "parameters": parameters,
     }

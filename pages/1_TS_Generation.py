@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 
 import timesynth as ts
 import streamlit as st
@@ -40,9 +40,9 @@ def get_gaussian_process_signal(**kwargs):
 
 
 def get_time_samples(
-    stop_time: int, num_points: int, keep_percentage: int, is_irregular: bool
+    num_points: int, keep_percentage: int, is_irregular: bool
 ) -> np.ndarray:
-    time_sampler = ts.TimeSampler(stop_time=stop_time)
+    time_sampler = ts.TimeSampler(stop_time=1)  # default 1?
     if is_irregular:
         return time_sampler.sample_irregular_time(
             num_points=num_points, keep_percentage=keep_percentage
@@ -51,27 +51,40 @@ def get_time_samples(
 
 
 def generate_data(
-    process_type: str = ProcessType.HARMONIC.value,
-    stop_time: int = 1,
-    num_points: int = 50,
-    keep_percentage: int = 50,
-    irregular: bool = True,
-    std_noise: float = 0.3,
+    process_type: str,
+    num_points: int,
+    keep_percentage: int,
+    irregular: bool,
+    std_noise: float,
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
     signal = None
 
+    # default
+    default_parameters = {
+        "process_type": process_type,
+        "num_points": num_points,
+        "keep_percentage": keep_percentage,
+        "irregular": irregular,
+        "std_noise": std_noise,
+    }
+    # extra
+    parameters = {**default_parameters, **kwargs}
+
     if process_type == ProcessType.HARMONIC.value:
-        signal = Sinusoidal(frequency=kwargs.get("frequency"))
+        signal = Sinusoidal(
+            amplitude=kwargs.get("amplitude"), frequency=kwargs.get("frequency")
+        )
 
     if process_type == ProcessType.GAUSSIAN_PROCESS.value:
         signal = get_gaussian_process_signal(**kwargs)
 
     if process_type == ProcessType.PSEUDO_PERIODIC.value:
         signal = PseudoPeriodic(
+            amplitude=kwargs.get("amplitude"),
             frequency=kwargs.get("frequency"),
-            freqSD=kwargs.get("freqSD"),
             ampSD=kwargs.get("ampSD"),
+            freqSD=kwargs.get("freqSD"),
         )
 
     if process_type == ProcessType.AUTO_REGRESSIVE.value:
@@ -83,17 +96,19 @@ def generate_data(
     if process_type == ProcessType.NARMA.value:
         signal = NARMA(order=kwargs.get("order"))
 
-    time_samples = get_time_samples(stop_time, num_points, keep_percentage, irregular)
+    time_samples = get_time_samples(num_points, keep_percentage, irregular)
     noise = GaussianNoise(std=std_noise)  # we only use the white noise
 
     timeseries = ts.TimeSeries(signal, noise_generator=noise)
     samples, _, _ = timeseries.sample(time_samples)
-    return time_samples, samples
+    return time_samples, samples, parameters
 
 
-def build_base_dataframes() -> Tuple[pd.DataFrame, pd.DataFrame]:
-    df1 = pd.DataFrame(columns=["x", "y"])
-    df2 = pd.DataFrame(columns=["x", "y"])
+def build_base_dataframes(
+    columns: List[str] = ["x", "y"]
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    df1 = pd.DataFrame(columns=columns)
+    df2 = pd.DataFrame(columns=columns)
     return df1, df2
 
 
@@ -130,7 +145,7 @@ def run() -> None:
             0.01,
             help="Standard deviation of the white noise",
         )
-        time_samples, samples = [], []
+        time_samples, samples, default_parameters = [], [], {}
 
         df, df_tmp = build_base_dataframes()
 
@@ -151,13 +166,14 @@ def run() -> None:
                 0.1,
                 help="Frequency of the harmonic series",
             )
-            time_samples, samples = generate_data(
+            time_samples, samples, default_parameters = generate_data(
                 process_type=process_type,
                 num_points=num_points,
-                irregular=irregular,
                 keep_percentage=keep_percentage,
+                irregular=irregular,
                 std_noise=std_noise,
                 frequency=frequency,
+                amplitude=amplitude,
             )
             # Gather data and render plot
             df_tmp.x = time_samples
@@ -172,11 +188,11 @@ def run() -> None:
 
             if kernel == ProcessKernel.SE.value:
                 df, df_tmp = build_base_dataframes()
-                time_samples, samples = generate_data(
+                time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     num_points=num_points,
-                    irregular=irregular,
                     keep_percentage=keep_percentage,
+                    irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                 )
@@ -189,11 +205,11 @@ def run() -> None:
                 df, df_tmp = build_base_dataframes()
                 # All covariances set to `variance`
                 variance = st.slider("variance", 0.0, 1.0, 1.0, 0.1)
-                time_samples, samples = generate_data(
+                time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     num_points=num_points,
-                    irregular=irregular,
                     keep_percentage=keep_percentage,
+                    irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     variance=variance,
@@ -205,11 +221,11 @@ def run() -> None:
 
             if kernel == ProcessKernel.EXPONENTIAL.value:
                 gamma = st.slider("gamma", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                time_samples, samples = generate_data(
+                time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     num_points=num_points,
-                    irregular=irregular,
                     keep_percentage=keep_percentage,
+                    irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     gamma=gamma,
@@ -221,11 +237,11 @@ def run() -> None:
 
             if kernel == ProcessKernel.RQ.value:
                 alpha = st.slider("alpha", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                time_samples, samples = generate_data(
+                time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     num_points=num_points,
-                    irregular=irregular,
                     keep_percentage=keep_percentage,
+                    irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     alpha=alpha,
@@ -238,11 +254,11 @@ def run() -> None:
             if kernel == ProcessKernel.LINEAR.value:
                 c = st.slider("c", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
                 offset = st.slider("offset", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                time_samples, samples = generate_data(
+                time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     num_points=num_points,
-                    irregular=irregular,
                     keep_percentage=keep_percentage,
+                    irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     c=c,
@@ -255,11 +271,11 @@ def run() -> None:
 
             if kernel == ProcessKernel.MATERN.value:
                 nu = st.slider("nu", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                time_samples, samples = generate_data(
+                time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     num_points=num_points,
-                    irregular=irregular,
                     keep_percentage=keep_percentage,
+                    irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     nu=nu,
@@ -271,11 +287,11 @@ def run() -> None:
 
             if kernel == ProcessKernel.PERIODIC.value:
                 period = st.slider("period", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                time_samples, samples = generate_data(
+                time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     num_points=num_points,
-                    irregular=irregular,
                     keep_percentage=keep_percentage,
+                    irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     period=period,
@@ -321,17 +337,21 @@ def run() -> None:
                 help="Frequency standard deviation",
             )
 
-            time_samples, samples = generate_data(
+            time_samples, samples, default_parameters = generate_data(
                 process_type=process_type,
                 num_points=num_points,
-                irregular=irregular,
                 keep_percentage=keep_percentage,
+                irregular=irregular,
                 std_noise=std_noise,
+                amplitude=amplitude,
+                ampSD=ampSD,
                 frequency=frequency,
                 freqSD=freqSD,
-                ampSD=ampSD,
-                amplitude=amplitude,
             )
+            # Gather data and render plot
+            df_tmp.x = time_samples
+            df_tmp.y = samples
+            df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
             plot_timeseries(container, time_samples, samples)
 
         if process_type == ProcessType.AUTO_REGRESSIVE.value:
@@ -345,13 +365,18 @@ def run() -> None:
             else:
                 ar_param = [phi_1]
 
-            time_samples, samples = generate_data(
+            time_samples, samples, default_parameters = generate_data(
                 process_type=process_type,
                 num_points=num_points,
-                irregular=False,
+                keep_percentage=100,  # required
+                irregular=False,  # required
                 std_noise=std_noise,
                 ar_param=ar_param,
             )
+            # Gather data and render plot
+            df_tmp.x = time_samples
+            df_tmp.y = samples
+            df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
             plot_timeseries(container, time_samples, samples)
 
         if process_type == ProcessType.CAR.value:
@@ -359,22 +384,28 @@ def run() -> None:
             ar_param = st.slider(
                 f"ar_param", 0.0, 2.0, 1.0, 0.1, help="Parameter of the AR(1) process"
             )
-            time_samples, samples = generate_data(
+            time_samples, samples, default_parameters = generate_data(
                 process_type=process_type,
                 num_points=num_points,
-                irregular=False,
+                keep_percentage=100,  # required
+                irregular=False,  # required
                 std_noise=std_noise,
                 ar_param=ar_param,
             )
+            # Gather data and render plot
+            df_tmp.x = time_samples
+            df_tmp.y = samples
+            df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
             plot_timeseries(container, time_samples, samples)
 
         if process_type == ProcessType.NARMA.value:
             df, df_tmp = build_base_dataframes()
             order = st.slider("order", 1, 10, 3, 1, help="Order of the NARMA process")
-            time_samples, samples = generate_data(
+            time_samples, samples, default_parameters = generate_data(
                 process_type=process_type,
                 num_points=num_points,
-                irregular=False,
+                keep_percentage=100,  # required
+                irregular=False,  # required
                 std_noise=std_noise,
                 order=order,
             )
@@ -389,11 +420,10 @@ def run() -> None:
         document_name = st.text_input(
             "Save with name:", "", max_chars=80, key="text_input"
         )
-        save_db = st.button("Save dataset to MongoDB")
-        if save_db:
+        save_to_database = st.button("Save dataset to MongoDB")
+        if save_to_database:
             doc_id = save_time_series(
-                doc_name=document_name,
-                time_series=df,
+                doc_name=document_name, time_series=df, parameters=default_parameters
             )
             # use doc_id ..?
 
