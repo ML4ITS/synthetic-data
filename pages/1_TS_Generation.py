@@ -1,12 +1,10 @@
-from typing import List, Tuple, Union, Dict, Any
+from typing import Tuple
 
 import timesynth as ts
 import streamlit as st
 import pandas as pd
 import numpy as np
 
-from streamlit.delta_generator import DeltaGenerator
-from timesynth.noise.red_noise import RedNoise
 from timesynth.noise.gaussian_noise import GaussianNoise
 from timesynth.signals.gaussian_process import GaussianProcess
 from timesynth.signals.pseudoperiodic import PseudoPeriodic
@@ -14,48 +12,30 @@ from timesynth.signals.sinusoidal import Sinusoidal
 from timesynth.signals.ar import AutoRegressive
 from timesynth.signals.narma import NARMA
 from timesynth.signals.car import CAR
-
 from db.database import save_time_series
+
+# from db.database import save_time_series
+from utils.processes import ProcessKernel, ProcessType
 from utils.utils import strtobool, plot_timeseries
-from enum import Enum
-
-
-class ProcessType(Enum):
-    Harmonic = "Harmonic"
-    GaussianProcess = "GaussianProcess"
-    PseudoPeriodic = "PseudoPeriodic"
-    AutoRegressive = "AutoRegressive"
-    CAR = "CAR"
-    NARMA = "NARMA"
-
-
-class ProcessKernel(Enum):
-    Constant = "Constant"
-    Exponential = "Exponential"
-    SE = "SE"
-    RQ = "RQ"
-    Linear = "Linear"
-    Matern = "Matern"
-    Periodic = "Periodic"
 
 
 def get_gaussian_process_signal(**kwargs):
     cov_function = kwargs.get("kernel")  # selected covariance function
-    if cov_function == ProcessKernel.Constant.value:
+    if cov_function == ProcessKernel.CONSTANT.value:
         return GaussianProcess(kernel=cov_function, variance=kwargs.get("variance"))
-    if cov_function == ProcessKernel.Exponential.value:
+    if cov_function == ProcessKernel.EXPONENTIAL.value:
         return GaussianProcess(kernel=cov_function, gamma=kwargs.get("gamma"))
     if cov_function == ProcessKernel.SE.value:
         return GaussianProcess(kernel=cov_function)
     if cov_function == ProcessKernel.RQ.value:
         return GaussianProcess(kernel=cov_function, alpha=kwargs.get("alpha"))
-    if cov_function == ProcessKernel.Linear.value:
+    if cov_function == ProcessKernel.LINEAR.value:
         return GaussianProcess(
             kernel=cov_function, c=kwargs.get("c"), offset=kwargs.get("offset")
         )
-    if cov_function == ProcessKernel.Matern.value:
+    if cov_function == ProcessKernel.MATERN.value:
         return GaussianProcess(kernel=cov_function, nu=kwargs.get("nu"))
-    if cov_function == ProcessKernel.Periodic.value:
+    if cov_function == ProcessKernel.PERIODIC.value:
         return GaussianProcess(kernel=cov_function, p=kwargs.get("period"))
 
 
@@ -71,7 +51,7 @@ def get_time_samples(
 
 
 def generate_data(
-    process_type: str = ProcessType.Harmonic.value,
+    process_type: str = ProcessType.HARMONIC.value,
     stop_time: int = 1,
     num_points: int = 50,
     keep_percentage: int = 50,
@@ -79,23 +59,22 @@ def generate_data(
     std_noise: float = 0.3,
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
-
     signal = None
 
-    if process_type == ProcessType.Harmonic.value:
+    if process_type == ProcessType.HARMONIC.value:
         signal = Sinusoidal(frequency=kwargs.get("frequency"))
 
-    if process_type == ProcessType.GaussianProcess.value:
+    if process_type == ProcessType.GAUSSIAN_PROCESS.value:
         signal = get_gaussian_process_signal(**kwargs)
 
-    if process_type == ProcessType.PseudoPeriodic.value:
+    if process_type == ProcessType.PSEUDO_PERIODIC.value:
         signal = PseudoPeriodic(
             frequency=kwargs.get("frequency"),
             freqSD=kwargs.get("freqSD"),
             ampSD=kwargs.get("ampSD"),
         )
 
-    if process_type == ProcessType.AutoRegressive.value:
+    if process_type == ProcessType.AUTO_REGRESSIVE.value:
         signal = AutoRegressive(ar_param=kwargs.get("ar_param"), sigma=std_noise)
 
     if process_type == ProcessType.CAR.value:
@@ -112,6 +91,12 @@ def generate_data(
     return time_samples, samples
 
 
+def build_base_dataframes() -> Tuple[pd.DataFrame, pd.DataFrame]:
+    df1 = pd.DataFrame(columns=["x", "y"])
+    df2 = pd.DataFrame(columns=["x", "y"])
+    return df1, df2
+
+
 # Your app goes in the function run()
 def run() -> None:
     st.subheader("Synthetic Time-Series Generation")
@@ -120,14 +105,12 @@ def run() -> None:
     with st.sidebar:
         st.sidebar.header("Configuration")
 
-        process_types = tuple(ProcessType.__members__.keys())
+        process_types = [key.value for key in ProcessType]
         process_type = st.selectbox("Process type", process_types)
 
         num_points = st.slider("Number of points", 0, 2500, 100, 5)
-        # num_timeseries = st.slider("Number of TS", 1, 1000, 5, 5)  # TODO: change?
-        # MAX_NUM_TIMESERIES = st.slider("Max number of TS to Plot", 1, 10, 1, 1)
 
-        irregular = strtobool(st.radio("Irregular", ("True", "False"), horizontal=True))
+        irregular = strtobool(st.radio("Irregular", ("False", "True"), horizontal=True))
         keep_percentage = st.slider(
             "Keep",
             0,
@@ -149,10 +132,9 @@ def run() -> None:
         )
         time_samples, samples = [], []
 
-        df = pd.DataFrame(columns=["x", "y"])  # "ID", "x", "y"]
-        df_temp = pd.DataFrame(columns=["x", "y"])  # "ID", "x", "y"]
+        df, df_tmp = build_base_dataframes()
 
-        if process_type == ProcessType.Harmonic.value:
+        if process_type == ProcessType.HARMONIC.value:
             amplitude = st.slider(
                 "Amplitude",
                 0.0,
@@ -169,7 +151,6 @@ def run() -> None:
                 0.1,
                 help="Frequency of the harmonic series",
             )
-            # for i in range(num_timeseries):
             time_samples, samples = generate_data(
                 process_type=process_type,
                 num_points=num_points,
@@ -178,21 +159,19 @@ def run() -> None:
                 std_noise=std_noise,
                 frequency=frequency,
             )
-            df_temp.x = time_samples
-            df_temp.y = samples
-            df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-            plot_timeseries(process_type, container, time_samples, samples)
+            # Gather data and render plot
+            df_tmp.x = time_samples
+            df_tmp.y = samples
+            df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
+            plot_timeseries(container, time_samples, samples)
 
-        if process_type == ProcessType.GaussianProcess.value:
-            df = pd.DataFrame(columns=["ID", "x", "y"])
-            df_temp = pd.DataFrame(columns=["ID", "x", "y"])
+        if process_type == ProcessType.GAUSSIAN_PROCESS.value:
 
-            kernel_types = tuple(ProcessKernel.__members__.keys())
+            kernel_types = [key.value for key in ProcessKernel]
             kernel = st.radio("Kernel", kernel_types)
 
             if kernel == ProcessKernel.SE.value:
-                # the squared exponential
-                # for i in range(num_timeseries):
+                df, df_tmp = build_base_dataframes()
                 time_samples, samples = generate_data(
                     process_type=process_type,
                     num_points=num_points,
@@ -201,15 +180,15 @@ def run() -> None:
                     std_noise=std_noise,
                     kernel=kernel,
                 )
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-                plot_timeseries(process_type, container, time_samples, samples)
+                df_tmp.x = time_samples
+                df_tmp.y = samples
+                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
+                plot_timeseries(container, time_samples, samples)
 
-            if kernel == ProcessKernel.Constant.value:
+            if kernel == ProcessKernel.CONSTANT.value:
+                df, df_tmp = build_base_dataframes()
                 # All covariances set to `variance`
                 variance = st.slider("variance", 0.0, 1.0, 1.0, 0.1)
-                # for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
                     num_points=num_points,
@@ -219,14 +198,13 @@ def run() -> None:
                     kernel=kernel,
                     variance=variance,
                 )
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-                plot_timeseries(process_type, container, time_samples, samples)
+                df_tmp.x = time_samples
+                df_tmp.y = samples
+                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
+                plot_timeseries(container, time_samples, samples)
 
-            if kernel == ProcessKernel.Exponential.value:
+            if kernel == ProcessKernel.EXPONENTIAL.value:
                 gamma = st.slider("gamma", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                # for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
                     num_points=num_points,
@@ -236,14 +214,13 @@ def run() -> None:
                     kernel=kernel,
                     gamma=gamma,
                 )
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-                plot_timeseries(process_type, container, time_samples, samples)
+                df_tmp.x = time_samples
+                df_tmp.y = samples
+                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
+                plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.RQ.value:
                 alpha = st.slider("alpha", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                # for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
                     num_points=num_points,
@@ -253,15 +230,14 @@ def run() -> None:
                     kernel=kernel,
                     alpha=alpha,
                 )
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-                plot_timeseries(process_type, container, time_samples, samples)
+                df_tmp.x = time_samples
+                df_tmp.y = samples
+                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
+                plot_timeseries(container, time_samples, samples)
 
-            if kernel == ProcessKernel.Linear.value:
+            if kernel == ProcessKernel.LINEAR.value:
                 c = st.slider("c", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
                 offset = st.slider("offset", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                # for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
                     num_points=num_points,
@@ -272,15 +248,13 @@ def run() -> None:
                     c=c,
                     offset=offset,
                 )
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-                plot_timeseries(process_type, container, time_samples, samples)
-                plot_timeseries(process_type, container, time_samples, samples)
+                df_tmp.x = time_samples
+                df_tmp.y = samples
+                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
+                plot_timeseries(container, time_samples, samples)
 
-            if kernel == ProcessKernel.Matern.value:
+            if kernel == ProcessKernel.MATERN.value:
                 nu = st.slider("nu", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                # for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
                     num_points=num_points,
@@ -290,14 +264,13 @@ def run() -> None:
                     kernel=kernel,
                     nu=nu,
                 )
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-                plot_timeseries(process_type, container, time_samples, samples)
+                df_tmp.x = time_samples
+                df_tmp.y = samples
+                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
+                plot_timeseries(container, time_samples, samples)
 
-            if kernel == ProcessKernel.Periodic.value:
+            if kernel == ProcessKernel.PERIODIC.value:
                 period = st.slider("period", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                # for i in range(num_timeseries):
                 time_samples, samples = generate_data(
                     process_type=process_type,
                     num_points=num_points,
@@ -307,14 +280,13 @@ def run() -> None:
                     kernel=kernel,
                     period=period,
                 )
-                df_temp.x = time_samples
-                df_temp.y = samples
-                df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-                plot_timeseries(process_type, container, time_samples, samples)
+                df_tmp.x = time_samples
+                df_tmp.y = samples
+                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
+                plot_timeseries(container, time_samples, samples)
 
-        if process_type == ProcessType.PseudoPeriodic.value:
-            df = pd.DataFrame(columns=["ID", "x", "y"])
-            df_temp = pd.DataFrame(columns=["ID", "x", "y"])
+        if process_type == ProcessType.PSEUDO_PERIODIC.value:
+            df, df_tmp = build_base_dataframes()
 
             amplitude = st.slider(
                 "Amplitude",
@@ -349,7 +321,6 @@ def run() -> None:
                 help="Frequency standard deviation",
             )
 
-            # for i in range(num_timeseries):
             time_samples, samples = generate_data(
                 process_type=process_type,
                 num_points=num_points,
@@ -361,15 +332,10 @@ def run() -> None:
                 ampSD=ampSD,
                 amplitude=amplitude,
             )
+            plot_timeseries(container, time_samples, samples)
 
-            df_temp.x = time_samples
-            df_temp.y = samples
-            df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-            plot_timeseries(process_type, container, time_samples, samples)
-
-        if process_type == ProcessType.AutoRegressive.value:
-            df = pd.DataFrame(columns=["ID", "x", "y"])
-            df_temp = pd.DataFrame(columns=["ID", "x", "y"])
+        if process_type == ProcessType.AUTO_REGRESSIVE.value:
+            df, df_tmp = build_base_dataframes()
             use_ar2 = st.checkbox("Use AR2, else AR1")
             phi_1 = st.slider(f"phi_1", 0.0, 2.0, 1.0, 0.1)
             phi_2 = st.slider(f"phi_2", 0.0, 2.0, 1.0, 0.1, disabled=not use_ar2)
@@ -379,7 +345,6 @@ def run() -> None:
             else:
                 ar_param = [phi_1]
 
-            # for i in range(num_timeseries):
             time_samples, samples = generate_data(
                 process_type=process_type,
                 num_points=num_points,
@@ -387,19 +352,13 @@ def run() -> None:
                 std_noise=std_noise,
                 ar_param=ar_param,
             )
-
-            df_temp.x = time_samples
-            df_temp.y = samples
-            df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-            plot_timeseries(process_type, container, time_samples, samples)
+            plot_timeseries(container, time_samples, samples)
 
         if process_type == ProcessType.CAR.value:
-            df = pd.DataFrame(columns=["ID", "x", "y"])
-            df_temp = pd.DataFrame(columns=["ID", "x", "y"])
+            df, df_tmp = build_base_dataframes()
             ar_param = st.slider(
                 f"ar_param", 0.0, 2.0, 1.0, 0.1, help="Parameter of the AR(1) process"
             )
-            # for i in range(num_timeseries):
             time_samples, samples = generate_data(
                 process_type=process_type,
                 num_points=num_points,
@@ -407,19 +366,11 @@ def run() -> None:
                 std_noise=std_noise,
                 ar_param=ar_param,
             )
-
-            df_temp.x = time_samples
-            df_temp.y = samples
-            df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-            plot_timeseries(process_type, container, time_samples, samples)
+            plot_timeseries(container, time_samples, samples)
 
         if process_type == ProcessType.NARMA.value:
-            df = pd.DataFrame(columns=["ID", "x", "y"])
-            df_temp = pd.DataFrame(columns=["ID", "x", "y"])
+            df, df_tmp = build_base_dataframes()
             order = st.slider("order", 1, 10, 3, 1, help="Order of the NARMA process")
-            coefficients = None  # TODO: implement?
-            initial_condition = None  # TODO: implement?
-            # for i in range(num_timeseries):
             time_samples, samples = generate_data(
                 process_type=process_type,
                 num_points=num_points,
@@ -427,22 +378,27 @@ def run() -> None:
                 std_noise=std_noise,
                 order=order,
             )
+            # Gather data and render plot
+            df_tmp.x = time_samples
+            df_tmp.y = samples
+            df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
+            plot_timeseries(container, time_samples, samples)
 
-            df_temp.x = time_samples
-            df_temp.y = samples
-            df = pd.concat([df, df_temp], axis=0, ignore_index=True)
-            plot_timeseries(process_type, container, time_samples, samples)
-
-        # Save to MongoDB
-        st.sidebar.header("Save to MongoDB")
-        collection_name = "time_series"
-        document_name = st.text_input("Document name", "")
-        save_db = st.button("Save")
-        if save_db and document_name:
+        # Save to Database
+        st.sidebar.header("MongoDB")
+        document_name = st.text_input(
+            "Save with name:", "", max_chars=80, key="text_input"
+        )
+        save_db = st.button("Save dataset to MongoDB")
+        if save_db:
             doc_id = save_time_series(
-                col_name=collection_name, doc_name=document_name, time_series=df
+                doc_name=document_name,
+                time_series=df,
             )
-            st.success("Saved document!")
+            # use doc_id ..?
+
+        # padding
+        st.write("--------------------")
 
 
 if __name__ == "__main__":

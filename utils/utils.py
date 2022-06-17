@@ -5,13 +5,12 @@ from bokeh.plotting import figure
 
 
 def plot_timeseries(
-    title: str, container: DeltaGenerator, time_samples: np.ndarray, samples: np.ndarray
+    container: DeltaGenerator, time_samples: np.ndarray, samples: np.ndarray
 ) -> None:
     if not len(time_samples) > 0:
         return
 
     fig = figure(
-        title=title,
         x_axis_label="x",
         y_axis_label="y",
         max_height=300,
@@ -31,16 +30,16 @@ def plot_timeseries(
 
 
 def plot_timeseries_from_dict(container: DeltaGenerator, time_series_dict: dict):
-    id = time_series_dict["_id"]
+    document_id = time_series_dict["_id"]
     name = time_series_dict["name"]
     last_modified = time_series_dict["last_modified"]
     time_samples = time_series_dict["x"]
     samples = time_series_dict["y"]
     container.subheader(f"Time-Series Document")
-    container.write(f"  ID: {id}")
+    container.write(f"  ID: {document_id}")
     container.write(f"Name: {name}")
-    container.write(f"From: {last_modified.strftime('%Y-%m-%d %H:%M:%S')}")
-    plot_timeseries(name, container, time_samples, samples)
+    container.write(f"From: {last_modified.strftime('%d-%m-%Y %H:%M')}")
+    plot_timeseries(container, time_samples, samples)
 
 
 def df_to_csv(df):

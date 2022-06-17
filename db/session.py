@@ -1,5 +1,5 @@
-from pymongo import MongoClient
 import streamlit as st
+from pymongo import MongoClient
 
 
 @st.experimental_singleton
