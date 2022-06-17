@@ -14,3 +14,13 @@ streamlit run Home.py
 ```python
 docker-compose up (or docker compose up)
 ```
+
+> Testing requrired a file *.streamlit/secrets.toml* from root directory
+```
+# .streamlit/secrets.toml
+
+[mongo]
+host = "localhost"
+port = 27017
+```
+(NB: requires running MongoDB)
