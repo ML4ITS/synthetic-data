@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import List
 
 import pandas as pd
-from streamlit.logger import get_logger
 
 from db.constants import Database, DatabaseCollection
 from db.session import init_connection
@@ -14,7 +13,7 @@ def get_datasets(limit: int = 100) -> List[dict]:
     db = db_client[Database.NAME.value]
     collection = db[DatabaseCollection.DATASETS.value]
     items = collection.find(limit=limit)
-    return list(items)  # make hashable for st.experimental_memo
+    return list(items)
 
 
 def save_time_series(doc_name: str, time_series: pd.DataFrame, parameters: dict) -> int:
@@ -26,7 +25,6 @@ def save_time_series(doc_name: str, time_series: pd.DataFrame, parameters: dict)
 
 
 def df_to_document(doc_name: str, df: pd.DataFrame, parameters: dict) -> dict:
-    # TimeSeriesDocument TODO: add more fields?
     return {
         "name": doc_name,
         "last_modified": datetime.utcnow(),

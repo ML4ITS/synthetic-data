@@ -29,17 +29,19 @@ def plot_timeseries(
     container.bokeh_chart(fig, use_container_width=True)
 
 
-def plot_timeseries_from_dict(container: DeltaGenerator, time_series_dict: dict):
-    document_id = time_series_dict["_id"]
-    name = time_series_dict["name"]
-    last_modified = time_series_dict["last_modified"]
-    time_samples = time_series_dict["x"]
-    samples = time_series_dict["y"]
-    container.subheader(f"Time-Series Document")
-    container.write(f"  ID: {document_id}")
-    container.write(f"Name: {name}")
-    container.write(f"From: {last_modified.strftime('%d-%m-%Y %H:%M')}")
-    plot_timeseries(container, time_samples, samples)
+def preview_dataset(container: DeltaGenerator, dataset: dict):
+    info = pd.DataFrame(
+        {
+            "id": [str(dataset["_id"])],
+            "name": [dataset["name"]],
+            "last_modified": [dataset["last_modified"].strftime("%d-%m-%Y %H:%M")],
+        }
+    )
+    params = pd.DataFrame([dataset["parameters"]])
+    meta = pd.concat([info, params], axis=1)
+    meta.set_index("id", inplace=True)
+    container.dataframe(meta)
+    plot_timeseries(container, dataset["x"], dataset["y"])
 
 
 def df_to_csv(df):

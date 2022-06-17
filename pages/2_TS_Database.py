@@ -1,6 +1,6 @@
 import streamlit as st
 from db.database import get_datasets
-from utils.utils import plot_timeseries_from_dict
+from utils.utils import preview_dataset
 
 
 def run() -> None:
@@ -12,14 +12,14 @@ def run() -> None:
         st.sidebar.header("Dataset of Time-Series")
 
         limit = st.sidebar.number_input(
-            "Max datasets", value=5, min_value=1, max_value=10
+            "Show max datasets", value=5, min_value=1, max_value=10
         )
-        documents = get_datasets(limit=limit)
 
-        for document in documents:
-            plot_timeseries_from_dict(container, document)
-        if not documents:
-            container.info(f"No documents found ...")
+        datasets = get_datasets(limit=limit)
+        for dataset in datasets:
+            preview_dataset(container, dataset)
+        if not datasets:
+            container.info(f"No dataset found ...")
 
 
 if __name__ == "__main__":
