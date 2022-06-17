@@ -23,4 +23,4 @@ docker-compose up (or docker compose up)
 host = "localhost"
 port = 27017
 ```
-(NB: requires running MongoDB)
+NB! Requires MongoDB, see [instructions](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/)
