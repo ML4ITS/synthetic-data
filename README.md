@@ -15,7 +15,7 @@ streamlit run Home.py
 docker-compose up (or docker compose up)
 ```
 
-> Testing requrired a file *.streamlit/secrets.toml* from root directory
+> Testing requires a file *.streamlit/secrets.toml* at root
 ```
 # .streamlit/secrets.toml
 
