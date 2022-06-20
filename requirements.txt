@@ -5,3 +5,6 @@ bokeh==2.4.1
 black
 timesynth
 pymongo
+torch
+matplotlib
+tqdm

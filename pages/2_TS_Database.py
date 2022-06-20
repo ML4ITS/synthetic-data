@@ -1,6 +1,6 @@
 import streamlit as st
 from db.database import get_datasets
-from utils.utils import preview_dataset
+from utils.vizu import preview_dataset
 
 
 def run() -> None:

@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 
 .streamlit/secrets.toml
+out/quick_harmon/

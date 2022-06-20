@@ -16,7 +16,8 @@ from db.database import save_time_series
 
 # from db.database import save_time_series
 from utils.processes import ProcessKernel, ProcessType
-from utils.utils import strtobool, plot_timeseries
+from utils.common import strtobool
+from utils.vizu import plot_timeseries
 
 
 def get_gaussian_process_signal(**kwargs):
@@ -123,12 +124,13 @@ def run() -> None:
         process_types = [key.value for key in ProcessType]
         process_type = st.selectbox("Process type", process_types)
 
-        num_points = st.slider("Number of points", 0, 2500, 100, 5)
+        # num_points = st.slider("Number of points", 0, 100_000, 100, 100)
+        num_points = st.number_input("Number of points", 0, 100_000, 5000, 100)
 
         irregular = strtobool(st.radio("Irregular", ("False", "True"), horizontal=True))
         keep_percentage = st.slider(
             "Keep",
-            0,
+            1,
             100,
             100,
             5,
@@ -152,7 +154,7 @@ def run() -> None:
         if process_type == ProcessType.HARMONIC.value:
             amplitude = st.slider(
                 "Amplitude",
-                0.0,
+                1.0,
                 10.0,
                 1.0,
                 0.1,
@@ -160,7 +162,7 @@ def run() -> None:
             )
             frequency = st.slider(
                 "Frequency",
-                0.0,
+                1.0,
                 100.0,
                 1.0,
                 0.1,
