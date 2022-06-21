@@ -8,3 +8,4 @@ pymongo
 torch
 matplotlib
 tqdm
+python-dotenv
