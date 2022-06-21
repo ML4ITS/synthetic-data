@@ -9,3 +9,4 @@ torch
 matplotlib
 tqdm
 python-dotenv
+ray[default]==1.12.0
