@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class Database(Enum):
-    NAME = "db_timeseries"
+    NAME = "timeseries"
 
 
 class DatabaseCollection(Enum):

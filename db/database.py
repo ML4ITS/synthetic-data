@@ -1,5 +1,4 @@
 import collections
-import logging
 import pickle
 from datetime import datetime
 from typing import List
@@ -69,6 +68,8 @@ def load_time_series(doc_name: str) -> dict:
     db = db_client[Database.NAME.value]
     collection = db[DatabaseCollection.DATASETS.value]
     document = collection.find_one({"name": doc_name})
+    if document is None:
+        raise FileNotFoundError(f"Dataset '{doc_name}' is not found.")
     return document
 
 
