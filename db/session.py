@@ -1,11 +1,9 @@
 import os
-from pathlib import Path
-
 import streamlit as st
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
-load_dotenv(dotenv_path=Path(".") / ".env")
+load_dotenv()
 
 
 @st.experimental_singleton

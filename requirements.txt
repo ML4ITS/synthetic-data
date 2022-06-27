@@ -10,3 +10,5 @@ matplotlib
 tqdm
 python-dotenv
 ray[default]==1.12.0
+pytorch-lightning
+mlflow

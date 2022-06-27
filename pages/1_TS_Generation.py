@@ -125,7 +125,7 @@ def run() -> None:
         process_type = st.selectbox("Process type", process_types)
 
         # num_points = st.slider("Number of points", 0, 100_000, 100, 100)
-        num_points = st.number_input("Number of points", 0, 100_000, 5000, 100)
+        num_points = st.number_input("Number of points", 0, 100_000, 100, 100)
 
         irregular = strtobool(st.radio("Irregular", ("False", "True"), horizontal=True))
         keep_percentage = st.slider(
@@ -418,16 +418,27 @@ def run() -> None:
             plot_timeseries(container, time_samples, samples)
 
         # Save to Database
-        st.sidebar.header("MongoDB")
-        document_name = st.text_input(
-            "Save with name:", "", max_chars=80, key="text_input"
-        )
-        save_to_database = st.button("Save dataset to MongoDB")
-        if save_to_database:
-            doc_id = save_time_series(
-                doc_name=document_name, time_series=df, parameters=default_parameters
+        # save_to_database = st.button("Save dataset to MongoDB")
+        # if save_to_database:
+        #     doc_id = save_time_series(
+        #         doc_name=document_name, time_series=df, parameters=default_parameters
+        #     )
+        #     # use doc_id ..?
+
+        with st.form("MongoDB Form"):
+            st.header("MongoDB")
+            document_name = st.text_input(
+                "Save with name:", "", max_chars=80, key="text_input"
             )
-            # use doc_id ..?
+            submitted = st.form_submit_button("Save dataset to MongoDB")
+            if submitted:
+                inserted_doc = save_time_series(
+                    doc_name=document_name,
+                    time_series=df,
+                    parameters=default_parameters,
+                )
+                if not inserted_doc.acknowledged:
+                    st.warning("Failed to submit to MongoDB")
 
         # padding
         st.write("--------------------")

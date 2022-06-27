@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from streamlit.delta_generator import DeltaGenerator
 from bokeh.plotting import figure
+import streamlit as st
 
 
 def plot_timeseries(
@@ -29,7 +30,12 @@ def plot_timeseries(
     container.bokeh_chart(fig, use_container_width=True)
 
 
-def preview_dataset(container: DeltaGenerator, dataset: dict):
+def preview_dataset(container: DeltaGenerator, dataset: dict) -> None:
+    container.dataframe(data=dataset_to_dataframe(dataset=dataset))
+    plot_timeseries(container, dataset["x"], dataset["y"])
+
+
+def dataset_to_dataframe(dataset: dict) -> pd.DataFrame:
     info = pd.DataFrame(
         {
             "id": [str(dataset["_id"])],
@@ -40,5 +46,4 @@ def preview_dataset(container: DeltaGenerator, dataset: dict):
     params = pd.DataFrame([dataset["parameters"]])
     meta = pd.concat([info, params], axis=1)
     meta.set_index("id", inplace=True)
-    container.dataframe(meta)
-    plot_timeseries(container, dataset["x"], dataset["y"])
+    return meta

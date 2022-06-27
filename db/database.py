@@ -20,7 +20,9 @@ def get_datasets(limit: int = 100) -> List[dict]:
     return list(items)
 
 
-def save_time_series(doc_name: str, time_series: pd.DataFrame, parameters: dict):
+def save_time_series(
+    doc_name: str, time_series: pd.DataFrame, parameters: dict
+) -> InsertOneResult:
     document = _create_time_series(doc_name, time_series, parameters)
     db = db_client[Database.NAME.value]
     collection = db[DatabaseCollection.DATASETS.value]

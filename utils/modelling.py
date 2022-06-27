@@ -85,3 +85,8 @@ def _load_data(
         return data.reshape(batch_size, -1)  # reshape to batch_size x n_samples
     else:
         raise TypeError(f"Data must be provided as numpy array or path w/o .pt suffix")
+
+
+def get_device():
+    return torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    # return torch.device("cpu")

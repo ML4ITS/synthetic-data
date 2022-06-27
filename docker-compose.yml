@@ -1,16 +1,16 @@
 version: "3"
 services:
-  app:
+  streamlit:
     build: .
     command: "streamlit run Home.py"
     ports:
       - "8501:8501"
     depends_on:
-      - ts_database
-  db:
+      - mongodb
+  mongodb:
     image: "mongo"
     ports:
-      - "27017:27017"
+      - "27018:27017"
     environment:
       - MONGO_INITDB_DATABASE=$MONGO_DATABASE
       - MONGO_INITDB_ROOT_USERNAME=$MONGO_USERNAME
