@@ -1,4 +1,5 @@
 import torch
+from utils.modelling import get_device
 
 
 class LSTM(torch.nn.Module):
@@ -8,13 +9,22 @@ class LSTM(torch.nn.Module):
         self.lstm1 = torch.nn.LSTMCell(1, self.hidden_layers)
         self.lstm2 = torch.nn.LSTMCell(self.hidden_layers, self.hidden_layers)
         self.linear = torch.nn.Linear(self.hidden_layers, 1)
+        self.device = get_device()
 
     def forward(self, x_train: torch.Tensor, future: int = 0):
         outputs = []
-        h_t = torch.zeros(x_train.size(0), self.hidden_layers, dtype=torch.double)
-        c_t = torch.zeros(x_train.size(0), self.hidden_layers, dtype=torch.double)
-        h_t2 = torch.zeros(x_train.size(0), self.hidden_layers, dtype=torch.double)
-        c_t2 = torch.zeros(x_train.size(0), self.hidden_layers, dtype=torch.double)
+        h_t = torch.zeros(
+            x_train.size(0), self.hidden_layers, dtype=torch.double, device=self.device
+        )
+        c_t = torch.zeros(
+            x_train.size(0), self.hidden_layers, dtype=torch.double, device=self.device
+        )
+        h_t2 = torch.zeros(
+            x_train.size(0), self.hidden_layers, dtype=torch.double, device=self.device
+        )
+        c_t2 = torch.zeros(
+            x_train.size(0), self.hidden_layers, dtype=torch.double, device=self.device
+        )
 
         for input_t in x_train.split(1, dim=1):
             h_t, c_t = self.lstm1(input_t, (h_t, c_t))

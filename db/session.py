@@ -1,12 +1,13 @@
 import os
-import streamlit as st
+
+# import streamlit as st
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
 load_dotenv()
 
 
-@st.experimental_singleton
+# @st.experimental_singleton
 def init_connection():
     HOST = os.getenv("MONGO_HOST")
     PORT = int(os.getenv("MONGO_PORT"))
