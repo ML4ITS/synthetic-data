@@ -14,16 +14,28 @@ class LSTM(torch.nn.Module):
     def forward(self, x_train: torch.Tensor, future: int = 0):
         outputs = []
         h_t = torch.zeros(
-            x_train.size(0), self.hidden_layers, dtype=torch.double, device=self.device
+            x_train.size(0),
+            self.hidden_layers,
+            dtype=torch.double,
+            device=x_train.device,
         )
         c_t = torch.zeros(
-            x_train.size(0), self.hidden_layers, dtype=torch.double, device=self.device
+            x_train.size(0),
+            self.hidden_layers,
+            dtype=torch.double,
+            device=x_train.device,
         )
         h_t2 = torch.zeros(
-            x_train.size(0), self.hidden_layers, dtype=torch.double, device=self.device
+            x_train.size(0),
+            self.hidden_layers,
+            dtype=torch.double,
+            device=x_train.device,
         )
         c_t2 = torch.zeros(
-            x_train.size(0), self.hidden_layers, dtype=torch.double, device=self.device
+            x_train.size(0),
+            self.hidden_layers,
+            dtype=torch.double,
+            device=x_train.device,
         )
 
         for input_t in x_train.split(1, dim=1):

@@ -5,10 +5,8 @@ bokeh==2.4.1
 black
 timesynth
 pymongo
-torch
+torch==1.10.2
 matplotlib
 tqdm
-python-dotenv
 ray[default]==1.12.0
-pytorch-lightning
 mlflow

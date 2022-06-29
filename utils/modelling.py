@@ -11,7 +11,7 @@ from mlflow.tracking import MlflowClient
 
 def vizualize_and_save_prediction(
     outdir: str,
-    val_predictions: np.ndarray,
+    predictions: np.ndarray,
     n_samples: torch.Tensor,
     future: int,
     epoch: int,
@@ -23,7 +23,7 @@ def vizualize_and_save_prediction(
     plt.xticks(fontsize=30)
     plt.yticks(fontsize=30)
 
-    random_sample = val_predictions[0]
+    random_sample = predictions[0]
 
     # Actual time-series
     plt.plot(
@@ -44,6 +44,42 @@ def vizualize_and_save_prediction(
     plt.close()
 
 
+def vizualize_and_view_prediction(
+    predictions: np.ndarray,
+    n_samples: torch.Tensor,
+    future: int,
+) -> None:
+    plt.figure(figsize=(12, 6))
+    plt.title(f"Prediction", fontsize=16)
+
+    random_sample = predictions[0]
+
+    # Actual time-series
+    plt.plot(
+        np.arange(n_samples),
+        random_sample[:n_samples],
+        "b",
+        linewidth=3,
+    )
+    # Forecasted time-series
+    plt.plot(
+        np.arange(n_samples, n_samples + future),
+        random_sample[n_samples:],
+        "b:",
+        linewidth=3,
+    )
+    plt.show()
+
+
+def vizualize_dataset(data: np.ndarray) -> None:
+    fig, ax = plt.subplots(2, 1, figsize=(12, 6), constrained_layout=True)
+    ax[0].plot(data.reshape(-1))
+    ax[0].set_title("Dataset preview", fontsize=16)
+    ax[1].plot(data[0])
+    ax[1].set_title("Batch preview", fontsize=16)
+    plt.show()
+
+
 def normalize(data: torch.Tensor, minval: int, maxval: int):
     """Normalize data to range [minval, maxval]"""
     return (maxval - minval) * (
@@ -52,22 +88,33 @@ def normalize(data: torch.Tensor, minval: int, maxval: int):
 
 
 def normalize_dataset(dataset: List[torch.Tensor]) -> List[torch.Tensor]:
-    """Normalize a list of data to range [minval, maxval]"""
+    """Normalize a list of data to range [-1, 1]"""
     return [normalize(data, minval=-1, maxval=1) for data in dataset]
 
 
-def load_and_split(
-    data: Union[str, np.ndarray], ratio: float = 0.2, batch_size: int = 100
+def reshape_and_split(
+    data: np.ndarray, split_ratio: float = 0.2, split_size: int = 100
 ) -> Tuple[torch.Tensor]:
-    """Split data into train and test sets by ratio,
-    if dataset is a single vector, it is split into batches of size batch_size"""
-    data = _load_data(data, batch_size)
-    return _split_data(data, ratio)
+    """Reshapes the data (np.ndarray) from (1 x N) to (split_size, N/split_size) and
+    splits it into train and test sets based on the split_ratio provided and returns
+    its as a tuple of torch.Tensors"""
+    data = _reshape_data(data, split_size)
+    return _split_data(data, split_ratio)
+
+
+def _reshape_data(data: np.ndarray, split_size: int = 100) -> np.ndarray:
+    # Reshapes the data (np.ndarray) from (1 x N) to (split_size, N/split_size)
+    if isinstance(data, np.ndarray):
+        return data.reshape(split_size, -1)
+    else:
+        raise TypeError(f"Data must be provided as np.ndarray")
 
 
 def _split_data(
     data: Union[torch.Tensor, np.ndarray], ratio: float = 0.2
 ) -> Tuple[torch.Tensor]:
+    # splits it into train and test sets based on the split_ratio provided and returns
+    # its as a tuple of torch.Tensors
     split_idx = int(data.shape[0] * ratio)
     x_train = torch.from_numpy(data[split_idx:, :-1])
     y_train = torch.from_numpy(data[split_idx:, 1:])
@@ -76,25 +123,24 @@ def _split_data(
     return x_train, y_train, x_test, y_test
 
 
-def _load_data(
-    data: Union[str, np.ndarray], batch_size: int = 100
-) -> Union[torch.Tensor, np.ndarray]:
-    if isinstance(data, str):  # if only path is provided
-        if data.endswith(".pt"):
-            return torch.load(data)
-        else:
-            return torch.load(data + ".pt")
-    elif isinstance(data, np.ndarray):  # if data is already a numpy array
-        return data.reshape(batch_size, -1)  # reshape to batch_size x n_samples
-    else:
-        raise TypeError(f"Data must be provided as numpy array or path w/o .pt suffix")
-
-
 def get_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device("cuda")
     else:
         return torch.device("cpu")
+
+
+def move_to_device(
+    data: Union[torch.Tensor, List[torch.Tensor]], device: torch.device
+) -> Union[torch.Tensor, List[torch.Tensor]]:
+    if isinstance(data, torch.Tensor):
+        return data.to(device)
+    elif isinstance(data, list):
+        return [d.to(device) for d in data]
+    else:
+        raise TypeError(
+            f"Data must be provided as torch.Tensor or list of torch.Tensor"
+        )
 
 
 def _load_json(dir: str, file) -> dict:
@@ -108,7 +154,7 @@ def _load_state_dict(
     return torch.load(os.path.join(dir, file), map_location=map_location)
 
 
-def load_state_dict(
+def fetch_and_load_state_dict(
     client: MlflowClient, run_id: str, src: str = ""
 ) -> torch.nn.Module:
     with tempfile.TemporaryDirectory() as tmpdir:

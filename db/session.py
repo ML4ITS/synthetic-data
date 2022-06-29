@@ -1,16 +1,13 @@
 import os
 
 # import streamlit as st
-from dotenv import load_dotenv
 from pymongo import MongoClient
-
-load_dotenv()
-
 
 # @st.experimental_singleton
 def init_connection():
-    HOST = os.getenv("MONGO_HOST")
-    PORT = int(os.getenv("MONGO_PORT"))
-    USERNAME = os.getenv("MONGO_USERNAME")
-    PASSWORD = os.getenv("MONGO_PASSWORD")
+    # TODO: Fix environment variables when testing locally
+    HOST = os.environ["MONGO_HOST"]
+    PORT = int(os.environ["MONGO_PORT"])
+    USERNAME = os.environ["MONGO_USERNAME"]
+    PASSWORD = os.environ["MONGO_PASSWORD"]
     return MongoClient(host=HOST, port=PORT, username=USERNAME, password=PASSWORD)

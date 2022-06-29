@@ -1,4 +1,5 @@
 import os
+import warnings
 from functools import partial
 
 import mlflow
@@ -15,9 +16,15 @@ from db import database as db
 from models.lstm import LSTM
 from utils.modelling import (
     get_device,
-    load_and_split,
+    reshape_and_split,
+    move_to_device,
     normalize_dataset,
     vizualize_and_save_prediction,
+)
+
+# ignore mlflow.utils.requirements_utils
+warnings.filterwarnings(
+    "ignore", category=UserWarning, module="mlflow.utils.requirements_utils"
 )
 
 
@@ -34,8 +41,7 @@ def train(model, opt, criterion, x_train, y_train):
     opt.step(closure)
 
 
-def test(model, criterion, x_test, y_test):
-    future = 500
+def test(model, criterion, x_test, y_test, future):
     with torch.no_grad():
         prediction = model(x_test, future=future)
         loss = criterion(prediction[:, :-future], y_test)
@@ -48,12 +54,7 @@ def run_training_session(config, dataset=None):
 
     device = get_device()
 
-    x_train, y_train, x_test, y_test = (
-        dataset[0].to(device),
-        dataset[1].to(device),
-        dataset[2].to(device),
-        dataset[3].to(device),
-    )
+    x_train, y_train, x_test, y_test = move_to_device(dataset, device)
 
     model = LSTM(hidden_layers=config["hidden_layers"])
     model.double()
@@ -62,52 +63,50 @@ def run_training_session(config, dataset=None):
     criterion = MSELoss()
     optimizer = LBFGS(model.parameters(), lr=config["lr"])
 
-    EPOCHS = None  # replace
-    TIMESTEP_PREDICTIONS = None  # replace
-    top_loss = float("inf")
-
-    for epoch in range(1, EPOCHS + 1):
+    for epoch in range(1, config["epochs"] + 1):
         train(model, optimizer, criterion, x_train, y_train)
-        vpred, vloss = test(model, criterion, x_test, y_test)
-        tune.report(validation_loss=float(vloss))
+        validation_predictions, validation_loss = test(
+            model, criterion, x_test, y_test, config["future"]
+        )
+        tune.report(validation_loss=float(validation_loss))
+        # TODO: Early stopping
         vizualize_and_save_prediction(
             outdir="plots",
-            val_predictions=vpred,
-            n_samples=x_train.size(1),
-            future=TIMESTEP_PREDICTIONS,
+            predictions=validation_predictions,
+            n_samples=x_test.size(1),
+            future=config["future"],
             epoch=epoch,
         )
 
-        if vloss < top_loss:
-            top_loss = vloss
-            save_path = os.path.join(tune.get_trial_dir(), "model.pt")
-            torch.save(model.state_dict(), save_path)
+    # Save on exit
+    mlflow.pytorch.save_model(model, "model")
 
 
+NUM_TRIAL_RUNS = None  # replace
 EXPERIMENT_NAME = "lstm_experiment"
-NUM_SAMPLES = None  # replace
 
-BATCH_SIZE = 10
+SPLIT_SIZE = 5
 SPLIT_RATIO = 0.3
 
 DATASET_NAME = "Simple Vibes"
 dataset = db.load_time_series_as_numpy(DATASET_NAME)
-dataset = load_and_split(dataset, ratio=SPLIT_RATIO, batch_size=BATCH_SIZE)
+dataset = reshape_and_split(dataset, split_ratio=SPLIT_RATIO, split_size=SPLIT_SIZE)
 dataset = normalize_dataset(dataset)
 
 resources_per_trial = {"cpu": 8, "gpu": 2}
 
 config = {
-    "hidden_layers": tune.choice([64, 128]),
+    "hidden_layers": tune.choice([64, 96, 128]),
     "lr": tune.choice(np.arange(0.55, 1, 0.1, dtype=float).round(2).tolist()),
+    "epochs": tune.choice([2]),
+    "future": tune.choice([200, 500, 1000]),
 }
 
-ray.init()
 
+ray.init()
 ML_HOST = None  # replace
 ML_PORT = None  # replace
 ML_SERVER = f"http://{ML_HOST}:{ML_PORT}"
-
 mlflow.set_tracking_uri(ML_SERVER)
 
 analysis = tune.run(
@@ -115,7 +114,7 @@ analysis = tune.run(
     name=EXPERIMENT_NAME,
     mode="min",
     verbose=0,
-    num_samples=NUM_SAMPLES,
+    num_samples=NUM_TRIAL_RUNS,
     log_to_file=["stdout.txt", "stderr.txt"],
     resources_per_trial=resources_per_trial,
     sync_config=tune.SyncConfig(syncer=None),
@@ -131,39 +130,45 @@ analysis = tune.run(
     ],
 )
 
-cli = MlflowClient()
-exp = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
+# cli = MlflowClient()
+# exp = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
 
-assert exp is not None
+# assert exp is not None
 
-runs = cli.search_runs(experiment_ids=[exp.experiment_id])
+# runs = cli.search_runs(experiment_ids=[exp.experiment_id])
 
-best_validation_loss = float("inf")
-best_experiment_run = None
+# best_validation_loss = float("inf")
+# best_experiment_run = None
+# registered_model_name = "lstm_model"
 
-for idx, run in enumerate(runs):
+# for idx, run in enumerate(runs):
 
-    if not run.data.metrics:
-        # no more data left
-        break
+#     if not run.data.metrics:
+#         # no more data left
+#         break
 
-    if "done" in run.data.metrics:
-        # check if the trial signal is completed
-        if bool(run.data.metrics["done"]):
-            break
+#     if "done" in run.data.metrics:
+#         # check if the trial signal is completed
+#         if bool(run.data.metrics["done"]):
+#             break
 
-    if "best_run" not in run.data.tags:
-        if best_validation_loss > run.data.metrics["validation_loss"]:
-            best_experiment_run = run
-            best_validation_loss = run.data.metrics["validation_loss"]
+#     if "best_run" not in run.data.tags:
+#         if best_validation_loss > run.data.metrics["validation_loss"]:
+#             best_experiment_run = run
+#             best_validation_loss = run.data.metrics["validation_loss"]
 
-if best_experiment_run is None:
-    raise ValueError("Could not find best experiment run")
+# if best_experiment_run is None:
+#     raise ValueError("Could not find best experiment run")
 
-result = mlflow.register_model(
-    model_uri=f"runs:/{best_experiment_run.info.run_id}", name="baseline_lstm"
-)
+# mlflow.register_model(
+#     f"runs:/{best_experiment_run.info.run_id}/model",
+#     registered_model_name,
+# )
 
-print("# Registrated model")
-print(f" Name   : {result.name}")
-print(f" Version: {result.version}")
+# result = mlflow.register_model(
+#     model_uri=f"runs:/{best_experiment_run.info.run_id}", name="baseline_lstm"
+# )
+
+# print("# Registrated model")
+# print(f" Name   : {result.name}")
+# print(f" Version: {result.version}")

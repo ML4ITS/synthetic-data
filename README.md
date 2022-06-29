@@ -12,15 +12,5 @@ streamlit run Home.py
 
 ## Running Streamlit (Dockerized)
 ```python
-docker-compose up (or docker compose up)
+docker-compose up --build -d (or docker compose up)
 ```
-
-> Testing requires a file *.streamlit/secrets.toml* at root
-```
-# .streamlit/secrets.toml
-
-[mongo]
-host = "localhost"
-port = 27017
-```
-NB! Requires MongoDB, see [instructions](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/)
