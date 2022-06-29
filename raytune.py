@@ -63,7 +63,7 @@ def run_training_session(config, dataset=None):
     optimizer = LBFGS(model.parameters(), lr=config["lr"])
 
     EPOCHS = None  # replace
-    TIMESTEP_PREDICTIONS = 500
+    TIMESTEP_PREDICTIONS = None  # replace
     top_loss = float("inf")
 
     for epoch in range(1, EPOCHS + 1):
@@ -81,7 +81,7 @@ def run_training_session(config, dataset=None):
         if vloss < top_loss:
             top_loss = vloss
             save_path = os.path.join(tune.get_trial_dir(), "model.pt")
-            torch.jit.save(torch.jit.trace(model, x_train), save_path)
+            torch.save(model.state_dict(), save_path)
 
 
 EXPERIMENT_NAME = "lstm_experiment"
@@ -98,8 +98,8 @@ dataset = normalize_dataset(dataset)
 resources_per_trial = {"cpu": 8, "gpu": 2}
 
 config = {
-    "hidden_layers": tune.choice([32, 48, 64, 80, 96]),
-    "lr": tune.choice(np.arange(0.5, 1, 0.1, dtype=float).round(1).tolist()),
+    "hidden_layers": tune.choice([64, 128]),
+    "lr": tune.choice(np.arange(0.55, 1, 0.1, dtype=float).round(2).tolist()),
 }
 
 ray.init()

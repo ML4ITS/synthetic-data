@@ -1,9 +1,12 @@
+import json
 import os
+import tempfile
 from typing import List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from mlflow.tracking import MlflowClient
 
 
 def vizualize_and_save_prediction(
@@ -87,6 +90,31 @@ def _load_data(
         raise TypeError(f"Data must be provided as numpy array or path w/o .pt suffix")
 
 
-def get_device():
-    return torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    # return torch.device("cpu")
+def get_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    else:
+        return torch.device("cpu")
+
+
+def _load_json(dir: str, file) -> dict:
+    with open(os.path.join(dir, file)) as f:
+        return json.load(f)
+
+
+def _load_state_dict(
+    dir: str, file: str, map_location: torch.device
+) -> torch.nn.Module:
+    return torch.load(os.path.join(dir, file), map_location=map_location)
+
+
+def load_state_dict(
+    client: MlflowClient, run_id: str, src: str = ""
+) -> torch.nn.Module:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path_to_files = client.download_artifacts(run_id, src, tmpdir)
+        params = _load_json(path_to_files, "params.json")
+        state_dict = _load_state_dict(
+            path_to_files, "model.pt", map_location=get_device()
+        )
+        return state_dict, params

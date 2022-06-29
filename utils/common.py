@@ -1,4 +1,7 @@
-def df_to_csv(df):
+import pandas as pd
+
+
+def df_to_csv(df: pd.DataFrame) -> None:
     return df.to_csv(index=False).encode("utf-8")
 
 
@@ -22,5 +25,5 @@ def strtobool(val: str) -> bool:
         raise ValueError(f"Invalid truth value '{val}'")
 
 
-def name_to_alias(name: str):
+def name_to_alias(name: str) -> str:
     return name.lower().replace(" ", "_")
