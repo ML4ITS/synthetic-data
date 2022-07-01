@@ -12,7 +12,7 @@ from models.lstm import LSTM
 from utils.common import name_to_alias
 from utils.logger import CustomFormatter
 from utils.modelling import (
-    load_and_split,
+    reshape_and_split,
     normalize_dataset,
     vizualize_and_save_prediction,
 )
@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
     # dataset
     dataset = db.load_time_series_as_numpy(DATASET_NAME)
-    dataset = load_and_split(dataset, ratio=SPLIT_RATIO, batch_size=BATCH_SIZE)
+    dataset = reshape_and_split(dataset, ratio=SPLIT_RATIO, batch_size=BATCH_SIZE)
     x_train, y_train, x_test, y_test = normalize_dataset(dataset)
 
     # params
