@@ -10,4 +10,4 @@ ML_PORT=$(grep ML_PORT .env | cut -d "=" -f2)
 
 export RAY_ADDRESS="http://$RAY_HOST:$RAY_PORT"
 
-ray job submit --runtime-env-json='{"working_dir": "./", "pip": ["pymongo"], "env_vars": {"MONGO_HOST": "'$MONGO_HOST'", "MONGO_PORT": "'$MONGO_PORT'", "MONGO_USERNAME": "'$MONGO_USERNAME'", "MONGO_PASSWORD": "'$MONGO_PASSWORD'", "ML_HOST": "'$ML_HOST'", "ML_PORT": "'$ML_PORT'"}}' -- python3 raytune.py
+ray job submit --runtime-env-json='{"working_dir": "./", "pip": ["pymongo", "python-dotenv"], "env_vars": {"MONGO_HOST": "'$MONGO_HOST'", "MONGO_PORT": "'$MONGO_PORT'", "MONGO_USERNAME": "'$MONGO_USERNAME'", "MONGO_PASSWORD": "'$MONGO_PASSWORD'", "ML_HOST": "'$ML_HOST'", "ML_PORT": "'$ML_PORT'"}}' -- python3 raytune.py

@@ -6,6 +6,7 @@ black
 timesynth
 pymongo
 torch==1.10.2
+python-dotenv
 matplotlib
 tqdm
 ray[default]==1.12.0
