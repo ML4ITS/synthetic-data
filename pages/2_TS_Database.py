@@ -6,7 +6,7 @@ from utils.vizu import preview_dataset
 def run() -> None:
 
     container = st.container()
-    container.header("Synthetic Time-Series Database")
+    container.header("Saved Time-Series")
 
     with st.sidebar:
         st.sidebar.header("Dataset of Time-Series")

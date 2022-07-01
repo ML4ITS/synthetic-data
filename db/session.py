@@ -2,6 +2,9 @@ import os
 
 # import streamlit as st
 from pymongo import MongoClient
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv())
 
 # @st.experimental_singleton
 def init_connection():

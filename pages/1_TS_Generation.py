@@ -115,8 +115,8 @@ def build_base_dataframes(
 
 # Your app goes in the function run()
 def run() -> None:
-    st.subheader("Synthetic Time-Series Generation")
     container = st.container()
+    container.header("Generate Time-Series")
 
     with st.sidebar:
         st.sidebar.header("Configuration")
