@@ -1,23 +1,39 @@
+from enum import Enum
 from typing import List, Tuple
 
-import timesynth as ts
-import streamlit as st
-import pandas as pd
 import numpy as np
-
+import pandas as pd
+import streamlit as st
+import timesynth as ts
+from common import api
+from common.helpers import strtobool
+from common.vizu import plot_timeseries
 from timesynth.noise.gaussian_noise import GaussianNoise
+from timesynth.signals.ar import AutoRegressive
+from timesynth.signals.car import CAR
 from timesynth.signals.gaussian_process import GaussianProcess
+from timesynth.signals.narma import NARMA
 from timesynth.signals.pseudoperiodic import PseudoPeriodic
 from timesynth.signals.sinusoidal import Sinusoidal
-from timesynth.signals.ar import AutoRegressive
-from timesynth.signals.narma import NARMA
-from timesynth.signals.car import CAR
-from db.database import save_time_series
 
-# from db.database import save_time_series
-from utils.processes import ProcessKernel, ProcessType
-from utils.common import strtobool
-from utils.vizu import plot_timeseries
+
+class ProcessType(Enum):
+    HARMONIC = "Harmonic"
+    GAUSSIAN_PROCESS = "GaussianProcess"
+    PSEUDO_PERIODIC = "PseudoPeriodic"
+    AUTO_REGRESSIVE = "AutoRegressive"
+    CAR = "CAR"
+    NARMA = "NARMA"
+
+
+class ProcessKernel(Enum):
+    CONSTANT = "Constant"
+    EXPONENTIAL = "Exponential"
+    SE = "SE"
+    RQ = "RQ"
+    LINEAR = "Linear"
+    MATERN = "Matern"
+    PERIODIC = "Periodic"
 
 
 def get_gaussian_process_signal(**kwargs):
@@ -417,28 +433,26 @@ def run() -> None:
             df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
             plot_timeseries(container, time_samples, samples)
 
-        # Save to Database
-        # save_to_database = st.button("Save dataset to MongoDB")
-        # if save_to_database:
-        #     doc_id = save_time_series(
-        #         doc_name=document_name, time_series=df, parameters=default_parameters
-        #     )
-        #     # use doc_id ..?
+        def form_callback():
+            """clears the text input"""
+            name = st.session_state.database_name
+
+            if name == "":
+                return
+            response = api.save_time_series(name, df, default_parameters)
+
+            if "error" in response:
+                st.error(response["error"])
+                if "stacktrace" in response:
+                    st.warning(response["stacktrace"])
+            else:
+                st.session_state.database_name = ""
 
         with st.form("MongoDB Form"):
             st.header("MongoDB")
-            document_name = st.text_input(
-                "Save with name:", "", max_chars=80, key="text_input"
-            )
-            submitted = st.form_submit_button("Save dataset to MongoDB")
-            if submitted:
-                inserted_doc = save_time_series(
-                    doc_name=document_name,
-                    time_series=df,
-                    parameters=default_parameters,
-                )
-                if not inserted_doc.acknowledged:
-                    st.warning("Failed to submit to MongoDB")
+            label = "Save dataset to MongoDB"
+            _ = st.text_input("Save with name:", key="database_name")
+            _ = st.form_submit_button(label, on_click=form_callback)
 
         # padding
         st.write("--------------------")
