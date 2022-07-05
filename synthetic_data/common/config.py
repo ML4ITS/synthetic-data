@@ -9,7 +9,7 @@ load_dotenv(find_dotenv())
 class Config:
 
     FLASK_HOST = os.getenv("FLASK_HOST")
-    FLASK_PORT = os.getenv("FLASK_PORT")
+    FLASK_PORT = int(os.getenv("FLASK_PORT"))
 
     MONGO_DATABASE = os.getenv("MONGO_DATABASE")
     MONGO_HOST = os.getenv("MONGO_HOST")

@@ -18,7 +18,7 @@ def save_time_series(name: str, ts: pd.DataFrame, params: dict) -> dict:
 
     ENDPOINT = cfg.API_URI + "/datasets"
     response = requests.post(ENDPOINT, json=payload)
-    return response.json
+    return response.json()
 
 
 def get_all_time_series(limit: int = 100) -> list:
