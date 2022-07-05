@@ -1,12 +1,10 @@
-from pprint import pprint
-import mlflow
 from mlflow.tracking import MlflowClient
 
 
 def print_all_registrated_models(client: MlflowClient) -> None:
     registered_models = client.list_registered_models()
     for registered_model in registered_models:
-        pprint(repr(registered_model))
+        print(repr(registered_model))
 
 
 def find_latest_registrated_model_version(client: MlflowClient, name: str) -> str:
