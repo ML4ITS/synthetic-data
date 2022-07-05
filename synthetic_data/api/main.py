@@ -118,11 +118,6 @@ def get_forecast():
         timesteps = request.form.get("timesteps", type=int)
         data = request.form.get("data", type=float)
 
-        print("name = ", model_name, type(model_name))
-        print(" ver = ", model_version, type(model_version))
-        print("  ts = ", timesteps, type(timesteps))
-        print("data = ", data, type(data))
-
         try:
             data = _preprocess_data(data)
             model = _load_model(
@@ -136,9 +131,6 @@ def get_forecast():
                 jsonify({"error": "Could not get forecast", "stacktrace": str(e)}),
                 500,
             )
-
-
-## ----------------------------------------------------
 
 
 def error_response(msg: str, code: int, stacktrace: Exception = None) -> Response:
@@ -201,7 +193,7 @@ def _create_forecast_response(
     }
 
 
-if __name__ == "__main__":  # pip install pymongo==2.8 --upgrade
+if __name__ == "__main__":
     HOST = "0.0.0.0"
     PORT = cfg.FLASK_PORT
     app.run(HOST, PORT, debug=True)
