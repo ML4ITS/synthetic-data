@@ -49,13 +49,12 @@ def get_datasets():
         datasets = list(mongo.db.datasets.find(limit=limit))
         if len(datasets) == 0:
             return error_response("No dataset found", 404)
-        elif len(datasets) > 1:
-            modified_datasets = []
-            for dataset in datasets:
-                dataset = json_util.dumps(dataset)
-                dataset = json.loads(dataset)
-                modified_datasets.append(dataset)
-            return jsonify({"datasets": modified_datasets})
+        modified_datasets = []
+        for dataset in datasets:
+            dataset = json_util.dumps(dataset)
+            dataset = json.loads(dataset)
+            modified_datasets.append(dataset)
+        return jsonify({"datasets": modified_datasets})
 
     elif request.method == "POST":
         """Saves a time-series to the database"""
