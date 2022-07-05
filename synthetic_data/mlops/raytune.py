@@ -1,30 +1,20 @@
-import os
-import warnings
 from functools import partial
 
 import mlflow
 import numpy as np
 import ray
 import torch
-from dotenv import find_dotenv, load_dotenv
-from utils.ray import MlflowModelRegister
+from common import api
+from common.config import Config
+from common.preprocessing import normalize_dataset, reshape_and_split
+from common.torchutils import get_device, move_to_device
+from common.vizu import vizualize_and_save_prediction
+from models.lstm import LSTM
 from ray import tune
 from ray.tune.integration.mlflow import MLflowLoggerCallback
+from tools.model_register import MlflowModelRegister
 from torch.nn import MSELoss
 from torch.optim import LBFGS
-
-from db import database as db
-from models.lstm import LSTM
-from utils.modelling import (
-    get_device,
-    reshape_and_split,
-    move_to_device,
-    normalize_dataset,
-    vizualize_and_save_prediction,
-)
-
-warnings.filterwarnings("ignore")
-load_dotenv(find_dotenv())
 
 
 def train(model, opt, criterion, x_train, y_train):
@@ -82,40 +72,34 @@ def run_training_session(config, dataset=None):
 
 
 # USER INPUT
-NUM_TRIAL_RUNS = 1
-MODEL_NAME = "My LSTM"
-DATASET_NAME = "Simple Vibes"
+NUM_TRIAL_RUNS = None  # replace
+MODEL_NAME = None  # replace
+DATASET_NAME = None  # replace
+SHOULD_REGISTER = None  # replace
 
 # (RARE) USER INPUT: Should we auto-adjust this?
-EXPERIMENT_NAME = "lstm_experiment"
-SPLIT_SIZE = 5
-SPLIT_RATIO = 0.3
-RESOURCES_PER_TRIAL = {"cpu": 4, "gpu": 1}
-ML_HOST = os.environ["ML_HOST"]
-ML_PORT = os.environ["ML_PORT"]
-ML_SERVER = f"http://{ML_HOST}:{ML_PORT}"
+EXPERIMENT_NAME = None  # replace
+SPLIT_SIZE = None  # replace
+SPLIT_RATIO = None  # replace
+RESOURCES_PER_TRIAL = None  # replace
 
 # ---
-dataset = db.load_time_series_as_numpy(DATASET_NAME)
+dataset = api.load_time_series_as_numpy(DATASET_NAME)
 dataset = reshape_and_split(dataset, split_ratio=SPLIT_RATIO, split_size=SPLIT_SIZE)
 dataset = normalize_dataset(dataset)
 
 
-config = {
-    "hidden_layers": tune.choice([64, 96, 128]),
-    "lr": tune.choice(np.arange(0.55, 1, 0.1, dtype=float).round(2).tolist()),
-    "epochs": tune.choice([2]),
-    "future": tune.choice([500]),
-}
+config = None  # replace
 
 ray.init()
-mlflow.set_tracking_uri(ML_SERVER)
+cfg = Config()
+mlflow.set_tracking_uri(cfg.MLFLOW_TRACKING_URI)
 
 analysis = tune.run(
     partial(run_training_session, dataset=dataset),
     name=EXPERIMENT_NAME,
-    mode="min",
-    verbose=0,
+    mode=None,  # replace
+    verbose=None,  # replace
     num_samples=NUM_TRIAL_RUNS,
     log_to_file=["stdout.txt", "stderr.txt"],
     resources_per_trial=RESOURCES_PER_TRIAL,
@@ -124,13 +108,14 @@ analysis = tune.run(
     config=config,
     callbacks=[
         MLflowLoggerCallback(
-            tracking_uri=ML_SERVER,
-            registry_uri=ML_SERVER,
+            tracking_uri=cfg.MLFLOW_TRACKING_URI,
+            registry_uri=cfg.MLFLOW_REGISTRY_URI,
             experiment_name=EXPERIMENT_NAME,
             save_artifact=True,
         )
     ],
 )
 
-registrator = MlflowModelRegister(EXPERIMENT_NAME)
-registrator.register(MODEL_NAME)
+if SHOULD_REGISTER:
+    registrator = MlflowModelRegister(EXPERIMENT_NAME)
+    registrator.register(MODEL_NAME)

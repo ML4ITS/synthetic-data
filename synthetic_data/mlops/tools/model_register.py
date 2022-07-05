@@ -1,6 +1,6 @@
 from mlflow import get_experiment_by_name, register_model
-from mlflow.tracking import MlflowClient
 from mlflow.entities import Run
+from mlflow.tracking import MlflowClient
 
 
 class MlflowModelRegister:

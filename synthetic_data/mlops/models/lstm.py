@@ -1,8 +1,10 @@
 import torch
-from utils.modelling import get_device
+from common.torchutils import get_device
 
 
 class LSTM(torch.nn.Module):
+    """simple LSTM architecture"""
+
     def __init__(self, hidden_layers: int = 64):
         super().__init__()
         self.hidden_layers = hidden_layers
