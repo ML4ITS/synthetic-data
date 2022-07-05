@@ -1,16 +1,8 @@
-# Synthetic TS
+# STS - Synthetic Time Series
 
 
-## Running Streamlit
-```bash
-# requires python3.7
-virtualenv venv
-. venv/bin/activate
-pip install -r requirements.txt --no-cache-dir
-streamlit run Home.py
-```
-
-## Running Streamlit (Dockerized)
+## Usage
 ```python
-docker-compose up --build -d (or docker compose up)
+touch .env # create & add credentials/secrets
+docker-compose build && docker-compose up
 ```
