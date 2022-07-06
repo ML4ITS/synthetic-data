@@ -8,6 +8,7 @@ pymongo
 torch==1.10.2
 python-dotenv
 matplotlib
+PyQt5
 tqdm
 ray[default]==1.12.0
 mlflow

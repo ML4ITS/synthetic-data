@@ -75,15 +75,15 @@ def run_training_session(config, dataset=None):
 # USER INPUT
 NUM_TRIAL_RUNS = 1
 MODEL_NAME = "LSTM Baseline"
-DATASET_NAME = "Harmonic"
+DATASET_NAME = "Harmonic 20HZ"
 
 # (RARE) USER INPUT: Should we auto-adjust this?
 EXPERIMENT_NAME = "lstm_experiment"
-SPLIT_SIZE = 5
+SPLIT_SIZE = 40
 SPLIT_RATIO = 0.3
-RESOURCES_PER_TRIAL = {"cpu": 1, "gpu": 1}
+RESOURCES_PER_TRIAL = {"cpu": 1, "gpu": 0}
 
-SHOULD_REGISTER = False
+SHOULD_REGISTER = True
 
 # ---
 cfg = RemoteConfig()
@@ -96,12 +96,12 @@ dataset = normalize_dataset(dataset)
 config = {
     "hidden_layers": tune.choice([64, 96, 128]),
     "lr": tune.choice(np.arange(0.55, 1, 0.1, dtype=float).round(2).tolist()),
-    "epochs": tune.choice([2]),
+    "epochs": tune.choice([12]),
     "future": tune.choice([500]),
 }
 
 ray.init()
-mlflow.set_tracking_uri(cfg.MLFLOW_TRACKING_URI)
+mlflow.set_tracking_uri(cfg.URI_MODELREG_REMOTE)
 
 analysis = tune.run(
     partial(run_training_session, dataset=dataset),
@@ -116,8 +116,8 @@ analysis = tune.run(
     config=config,
     callbacks=[
         MLflowLoggerCallback(
-            tracking_uri=cfg.MLFLOW_TRACKING_URI,
-            registry_uri=cfg.MLFLOW_REGISTRY_URI,
+            tracking_uri=cfg.URI_MODELREG_REMOTE,
+            registry_uri=cfg.URI_MODELREG_REMOTE,
             experiment_name=EXPERIMENT_NAME,
             save_artifact=True,
         )
