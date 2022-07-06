@@ -36,7 +36,7 @@ def ping():
 def get_names():
     try:
         names = mongo.db.list_collection_names()
-        return jsonify("names", names)
+        return jsonify({"names": names})
     except Exception as e:
         return error_response("No names found", 404)
 
