@@ -118,7 +118,7 @@ def get_forecast():
         try:
             data = _preprocess_data(data)
             model = _load_model(
-                f"models:/{model_name}/{model_version}", device=cfg.DEVICE
+                f"models:/{model_name}/{model_version}", device=torch.device("cpu")
             )
             predictions = model(data, future=timesteps)
             forecast = _create_forecast_response(data, predictions, timesteps)
@@ -191,6 +191,4 @@ def _create_forecast_response(
 
 
 if __name__ == "__main__":
-    HOST = "0.0.0.0"
-    PORT = cfg.FLASK_PORT
-    app.run(HOST, PORT, debug=True)
+    app.run("0.0.0.0", cfg.DATABASE_PORT, debug=True)
