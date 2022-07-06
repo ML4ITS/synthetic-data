@@ -191,4 +191,4 @@ def _create_forecast_response(
 
 
 if __name__ == "__main__":
-    app.run("0.0.0.0", cfg.DATABASE_PORT, debug=True)
+    app.run("0.0.0.0", cfg.BACKEND_PORT, debug=True)
