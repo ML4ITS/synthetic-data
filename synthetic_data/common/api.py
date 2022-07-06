@@ -1,3 +1,5 @@
+from pprint import pprint
+
 import pandas as pd
 import requests
 from common.config import LocalConfig
@@ -37,5 +39,7 @@ def get_forecast_meta(model_name, model_version, timesteps, data):
         "timesteps": timesteps,
         "data": data,
     }
+    print("Sending payload")
+    pprint(payload)
     r = requests.post(ENDPOINT, json=payload)
     return r.json()

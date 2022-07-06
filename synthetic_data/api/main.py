@@ -114,6 +114,11 @@ def get_forecast():
         model_version = request.form.get("model_version", type=str)
         timesteps = request.form.get("timesteps", type=int)
         data = request.form.get("data", type=float)
+        print("Received FORM")
+        print(f"model_name   : {model_name} with type {type(model_name)}")
+        print(f"model_version: {model_version} with type {type(model_version)}")
+        print(f"timesteps    : {timesteps} with type {type(timesteps)}")
+        print(f"data         : {data} with type {type(data)}")
 
         try:
             data = _preprocess_data(data)
