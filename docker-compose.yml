@@ -20,9 +20,9 @@ services:
   mongodb:
     image: "mongo"
     environment:
-      - MONGO_INITDB_DATABASE=$MONGO_DATABASE
-      - MONGO_INITDB_ROOT_USERNAME=$MONGO_USERNAME
-      - MONGO_INITDB_ROOT_PASSWORD=$MONGO_PASSWORD
+      - MONGO_INITDB_DATABASE=$DATABASE_NAME
+      - MONGO_INITDB_ROOT_USERNAME=$DATABASE_USERNAME
+      - MONGO_INITDB_ROOT_PASSWORD=$DATABASE_PASSWORD
     volumes:
       - mongodb-data:/data/db
     ports:
