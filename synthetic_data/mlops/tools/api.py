@@ -5,7 +5,7 @@ from synthetic_data.common.config import RemoteConfig
 
 
 def load_dataset(cfg: RemoteConfig, name: str) -> np.ndarray:
-    ENDPOINT = cfg.BACKEND_URI + "/dataset"
+    ENDPOINT = cfg.URI_BACKEND_REMOTE + "/dataset"
     response = requests.get(ENDPOINT, params={"name": name})
     response = response.json()
     dataset = response["dataset"]

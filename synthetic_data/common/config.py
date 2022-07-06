@@ -8,15 +8,15 @@ load_dotenv(find_dotenv())
 
 class ServerConfig:
     @property
-    def APPLICATION_SERVER(self):
-        return os.getenv("APPLICATION_SERVER")
+    def APPLICATION_HOST(self):
+        return os.getenv("APPLICATION_HOST")
 
     @property
-    def COMPUTATION_SERVER(self):
-        return os.getenv("COMPUTATION_SERVER")
+    def COMPUTATION_HOST(self):
+        return os.getenv("COMPUTATION_HOST")
 
 
-class LocalDatabaseConfig:
+class DatabaseConfig:
     @property
     def DATABASE_NAME(self):
         return os.getenv("DATABASE_NAME")
@@ -38,21 +38,21 @@ class LocalDatabaseConfig:
         return int(os.getenv("DATABASE_PORT"))
 
     @property
-    def DATABASE_URI(self):
+    def URI_DATABASE(self):
         return f"mongodb://{self.DATABASE_USERNAME}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}?authSource=admin"
 
 
-class RemoteModelRegistryConfig(ServerConfig):
+class ModelRegistryConfig(ServerConfig):
     @property
     def MODELREG_PORT(self):
         return int(os.getenv("MODELREG_PORT"))
 
     @property
-    def MODELREG_URI(self):
-        return f"http://{self.APPLICATION_SERVER}:{self.MODELREG_PORT}"
+    def URI_MODELREG_REMOTE(self):
+        return f"http://{self.APPLICATION_HOST}:{self.MODELREG_PORT}"
 
 
-class LocalBackendConfig:
+class BackendConfig(ServerConfig):
     @property
     def BACKEND_HOST(self):
         return os.getenv("BACKEND_HOST")
@@ -62,25 +62,19 @@ class LocalBackendConfig:
         return int(os.getenv("BACKEND_PORT"))
 
     @property
-    def BACKEND_URI(self):
+    def URI_BACKEND_LOCAL(self):
         return f"http://{self.BACKEND_HOST}:{self.BACKEND_PORT}"
 
-
-class RemoteBackendConfig(ServerConfig):
     @property
-    def BACKEND_PORT(self):
-        return int(os.getenv("BACKEND_PORT"))
-
-    @property
-    def BACKEND_URI(self):
-        return f"http://{self.APPLICATION_SERVER}:{self.BACKEND_PORT}"
+    def URI_BACKEND_REMOTE(self):
+        return f"http://{self.APPLICATION_HOST}:{self.BACKEND_PORT}"
 
 
-class LocalConfig(LocalBackendConfig, LocalDatabaseConfig, RemoteModelRegistryConfig):
+class LocalConfig(BackendConfig, DatabaseConfig, ModelRegistryConfig):
     pass
 
 
-class RemoteConfig(RemoteBackendConfig, RemoteModelRegistryConfig):
+class RemoteConfig(BackendConfig, ModelRegistryConfig):
     pass
 
 

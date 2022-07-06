@@ -14,11 +14,11 @@ from requests import Response
 
 cfg = LocalConfig()
 app = Flask(__name__)
-app.config["MONGO_URI"] = cfg.DATABASE_URI
+app.config["MONGO_URI"] = cfg.URI_DATABASE
 mongo = PyMongo(app)
 
-mlflow.set_tracking_uri(cfg.MODELREG_URI)
-mlflow.set_registry_uri(cfg.MODELREG_URI)
+mlflow.set_tracking_uri(cfg.URI_MODELREG_REMOTE)
+mlflow.set_registry_uri(cfg.URI_MODELREG_REMOTE)
 ml_client = MlflowClient()
 
 
