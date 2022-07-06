@@ -1,9 +1,6 @@
 import streamlit as st
 from common import api
-from common.config import Config
 from common.vizu import plot_forecast_meta
-
-cfg = Config()
 
 
 def run() -> None:
