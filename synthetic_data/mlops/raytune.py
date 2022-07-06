@@ -4,17 +4,18 @@ import mlflow
 import numpy as np
 import ray
 import torch
-from common import api
-from common.config import Config
-from common.preprocessing import normalize_dataset, reshape_and_split
-from common.torchutils import get_device, move_to_device
-from common.vizu import vizualize_and_save_prediction
-from models.lstm import LSTM
 from ray import tune
 from ray.tune.integration.mlflow import MLflowLoggerCallback
-from tools.model_register import MlflowModelRegister
 from torch.nn import MSELoss
 from torch.optim import LBFGS
+
+from synthetic_data.common.config import RemoteConfig
+from synthetic_data.common.preprocessing import normalize_dataset, reshape_and_split
+from synthetic_data.common.torchutils import get_device, move_to_device
+from synthetic_data.common.vizu import vizualize_and_save_prediction
+from synthetic_data.mlops.models.lstm import LSTM
+from synthetic_data.mlops.tools.api import load_dataset
+from synthetic_data.mlops.tools.model_register import MlflowModelRegister
 
 
 def train(model, opt, criterion, x_train, y_train):
@@ -72,34 +73,41 @@ def run_training_session(config, dataset=None):
 
 
 # USER INPUT
-NUM_TRIAL_RUNS = None  # replace
-MODEL_NAME = None  # replace
-DATASET_NAME = None  # replace
-SHOULD_REGISTER = None  # replace
+NUM_TRIAL_RUNS = 1
+MODEL_NAME = "LSTM Baseline"
+DATASET_NAME = "Harmonic"
 
 # (RARE) USER INPUT: Should we auto-adjust this?
-EXPERIMENT_NAME = None  # replace
-SPLIT_SIZE = None  # replace
-SPLIT_RATIO = None  # replace
-RESOURCES_PER_TRIAL = None  # replace
+EXPERIMENT_NAME = "lstm_experiment"
+SPLIT_SIZE = 5
+SPLIT_RATIO = 0.3
+RESOURCES_PER_TRIAL = {"cpu": 1, "gpu": 1}
+
+SHOULD_REGISTER = False
 
 # ---
-dataset = api.load_time_series_as_numpy(DATASET_NAME)
+cfg = RemoteConfig()
+
+dataset = load_dataset(cfg, DATASET_NAME)
 dataset = reshape_and_split(dataset, split_ratio=SPLIT_RATIO, split_size=SPLIT_SIZE)
 dataset = normalize_dataset(dataset)
 
 
-config = None  # replace
+config = {
+    "hidden_layers": tune.choice([64, 96, 128]),
+    "lr": tune.choice(np.arange(0.55, 1, 0.1, dtype=float).round(2).tolist()),
+    "epochs": tune.choice([2]),
+    "future": tune.choice([500]),
+}
 
 ray.init()
-cfg = Config()
 mlflow.set_tracking_uri(cfg.MLFLOW_TRACKING_URI)
 
 analysis = tune.run(
     partial(run_training_session, dataset=dataset),
     name=EXPERIMENT_NAME,
-    mode=None,  # replace
-    verbose=None,  # replace
+    mode="min",
+    verbose=0,
     num_samples=NUM_TRIAL_RUNS,
     log_to_file=["stdout.txt", "stderr.txt"],
     resources_per_trial=RESOURCES_PER_TRIAL,

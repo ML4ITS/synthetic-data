@@ -1,5 +1,6 @@
 import torch
-from common.torchutils import get_device
+
+from synthetic_data.common.torchutils import get_device
 
 
 class LSTM(torch.nn.Module):

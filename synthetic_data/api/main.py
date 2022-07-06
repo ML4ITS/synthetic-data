@@ -6,19 +6,19 @@ import mlflow
 import numpy as np
 import torch
 from bson import json_util
-from common.config import Config
+from common.config import LocalConfig
 from flask import Flask, jsonify, request
 from flask_pymongo import PyMongo
 from mlflow.tracking import MlflowClient
 from requests import Response
 
-cfg = Config()
+cfg = LocalConfig()
 app = Flask(__name__)
-app.config["MONGO_URI"] = cfg.MONGO_URI_WITH_AUTH
+app.config["MONGO_URI"] = cfg.DATABASE_URI
 mongo = PyMongo(app)
 
-mlflow.set_tracking_uri(cfg.MLFLOW_TRACKING_URI)
-mlflow.set_registry_uri(cfg.MLFLOW_REGISTRY_URI)
+mlflow.set_tracking_uri(cfg.MODELREG_URI)
+mlflow.set_registry_uri(cfg.MODELREG_URI)
 ml_client = MlflowClient()
 
 
