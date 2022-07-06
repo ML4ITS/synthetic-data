@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-APPLICATION_HOST=$(grep XXXXXXXXXXX .env | cut -d "=" -f2)
-COMPUTATION_HOST=$(grep XXXXXXXXXXX .env | cut -d "=" -f2)
+APPLICATION_HOST=$(grep APPLICATION_HOST .env | cut -d "=" -f2)
+COMPUTATION_HOST=$(grep COMPUTATION_HOST .env | cut -d "=" -f2)
 
 RAY_PORT=$(grep RAY_PORT .env | cut -d "=" -f2)
 MODELREG_PORT=$(grep MODELREG_PORT .env | cut -d "=" -f2)
