@@ -1,15 +1,15 @@
 import matplotlib
+from mlops.tools.api import load_dataset
 
 from synthetic_data.common.config import RemoteConfig
 from synthetic_data.common.preprocessing import normalize_dataset, reshape_and_split
 from synthetic_data.common.vizu import vizualize_dataset
-from synthetic_data.mlops.tools.api import load_dataset
 
 matplotlib.use("Qt5Agg")
 
 SPLIT_SIZE = 40
 SPLIT_RATIO = 0.3
-DATASET_NAME = "Harmonic 20HZ"
+DATASET_NAME = "Simple"
 
 # ---
 cfg = RemoteConfig()

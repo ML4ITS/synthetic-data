@@ -75,11 +75,11 @@ def run_training_session(config, dataset=None):
 # USER INPUT
 NUM_TRIAL_RUNS = 1
 MODEL_NAME = "LSTM Baseline"
-DATASET_NAME = "Harmonic 20HZ"
+DATASET_NAME = "Simple"
 
 # (RARE) USER INPUT: Should we auto-adjust this?
 EXPERIMENT_NAME = "lstm_experiment"
-SPLIT_SIZE = 40
+SPLIT_SIZE = 20
 SPLIT_RATIO = 0.3
 RESOURCES_PER_TRIAL = {"cpu": 1, "gpu": 0}
 
@@ -96,7 +96,7 @@ dataset = normalize_dataset(dataset)
 config = {
     "hidden_layers": tune.choice([64, 96, 128]),
     "lr": tune.choice(np.arange(0.55, 1, 0.1, dtype=float).round(2).tolist()),
-    "epochs": tune.choice([12]),
+    "epochs": tune.choice([8]),
     "future": tune.choice([500]),
 }
 
