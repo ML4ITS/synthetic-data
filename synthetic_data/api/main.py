@@ -41,7 +41,7 @@ def get_names():
         return error_response("No names found", 404)
 
 
-@app.route("/datasets", methods=["GET", "POST"])
+@app.route("/datasets", methods=["GET"])
 def get_datasets():
     if request.method == "GET":
         """returns a list of all the time-series in the database"""
@@ -56,6 +56,21 @@ def get_datasets():
             modified_datasets.append(dataset)
         return jsonify({"datasets": modified_datasets})
 
+
+@app.route("/dataset", methods=["GET", "POST"])
+def get_dataset():
+    if request.method == "GET":
+        name = request.args.get("name", None, type=str)
+        dataset = mongo.db.datasets.find_one({"name": name})
+        if dataset is None:
+            return jsonify({"error": f"No dataset found with name {name}"}), 404
+        try:
+            dataset = json_util.dumps(dataset)
+            dataset = json.loads(dataset)
+            return jsonify({"dataset": dataset})
+        except Exception as e:
+            return error_response(f"Could get dataset {name}", 500, e)
+
     elif request.method == "POST":
         """Saves a time-series to the database"""
         dataset = request.get_json()
@@ -64,19 +79,6 @@ def get_datasets():
             return jsonify({"id": str(result.inserted_id)}), 201
         except Exception as e:
             return error_response("Could not save dataset", 500, e)
-
-
-@app.route("/datasets/<string:name>", methods=["GET"])
-def get_dataset(name: str):
-    dataset = mongo.db.datasets.find_one({"name": name})
-    if dataset is None:
-        return jsonify({"error": f"No dataset found with name {name}"}), 404
-    try:
-        dataset = json_util.dumps(dataset)
-        dataset = json.loads(dataset)
-        return jsonify({"dataset": dataset})
-    except Exception as e:
-        return error_response(f"Could get dataset {name}", 500, e)
 
 
 @app.route("/models", methods=["GET"])
