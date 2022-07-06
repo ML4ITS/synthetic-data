@@ -110,15 +110,11 @@ def get_models():
 @app.route("/forecast", methods=["GET", "POST"])
 def get_forecast():
     if request.method == "POST":
-        model_name = request.form.get("model_name", type=str)
-        model_version = request.form.get("model_version", type=str)
-        timesteps = request.form.get("timesteps", type=int)
-        data = request.form.get("data", type=float)
-        print("Received FORM")
-        print(f"model_name   : {model_name} with type {type(model_name)}")
-        print(f"model_version: {model_version} with type {type(model_version)}")
-        print(f"timesteps    : {timesteps} with type {type(timesteps)}")
-        print(f"data         : {data} with type {type(data)}")
+        payload = request.get_json()
+        model_name = payload["model_name"]
+        model_version = payload["model_version"]
+        timesteps = payload["timesteps"]
+        data = payload["data"]
 
         try:
             data = _preprocess_data(data)
