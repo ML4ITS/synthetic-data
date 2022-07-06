@@ -6,50 +6,85 @@ from dotenv import find_dotenv, load_dotenv
 load_dotenv(find_dotenv())
 
 
-class Config:
-
-    FLASK_HOST = os.getenv("FLASK_HOST")
-    FLASK_PORT = int(os.getenv("FLASK_PORT"))
-
-    MONGO_DATABASE = os.getenv("MONGO_DATABASE")
-    MONGO_HOST = os.getenv("MONGO_HOST")
-    MONGO_PORT = int(os.getenv("MONGO_PORT"))
-    MONGO_USERNAME = quote_plus(os.getenv("MONGO_USERNAME"))
-    MONGO_PASSWORD = quote_plus(os.getenv("MONGO_PASSWORD"))
-
-    MLFLOW_HOST = os.getenv("ML_HOST")
-    MLFLOW_PORT = int(os.getenv("ML_PORT"))
+class ServerConfig:
+    @property
+    def APPLICATION_SERVER(self):
+        return os.getenv("APPLICATION_SERVER")
 
     @property
-    def MONGO_URI(self):
-        return f"mongodb://{self.MONGO_HOST}:{self.MONGO_PORT}/{self.MONGO_DATABASE}"
+    def COMPUTATION_SERVER(self):
+        return os.getenv("COMPUTATION_SERVER")
+
+
+class LocalDatabaseConfig:
+    @property
+    def DATABASE_NAME(self):
+        return os.getenv("DATABASE_NAME")
 
     @property
-    def MONGO_URI_WITH_AUTH(self):
-        return f"mongodb://{self.MONGO_USERNAME}:{self.MONGO_PASSWORD}@{self.MONGO_HOST}:{self.MONGO_PORT}/{self.MONGO_DATABASE}?authSource=admin"
+    def DATABASE_USERNAME(self):
+        return quote_plus(os.getenv("DATABASE_USERNAME"))
 
     @property
-    def MLFLOW_TRACKING_URI(self):
-        return f"http://{self.MLFLOW_HOST}:{self.MLFLOW_PORT}"
+    def DATABASE_PASSWORD(self):
+        return quote_plus(os.getenv("DATABASE_PASSWORD"))
 
     @property
-    def MLFLOW_REGISTRY_URI(self):
-        return f"http://{self.MLFLOW_HOST}:{self.MLFLOW_PORT}"
+    def DATABASE_HOST(self):
+        return os.getenv("DATABASE_HOST")
 
     @property
-    def API_URI(self):
-        return f"http://{self.FLASK_HOST}:{self.FLASK_PORT}"
+    def DATABASE_PORT(self):
+        return int(os.getenv("DATABASE_PORT"))
 
-    def print_debug(self):
-        print("---------------------------")
-        print("# CONFIGURATION SETTINGS --")
-        print("- MONGO_NAME    : ", self.MONGO_DATABASE)
-        print("- MONGO_HOST    : ", self.MONGO_HOST)
-        print("- MONGO_PORT    : ", self.MONGO_PORT)
-        print("- MONGO_USER    : ", self.MONGO_USERNAME)
-        print("- MONGO_PASS    : ", self.MONGO_PASSWORD)
-        print("- MLFLOW_HOST   : ", self.MLFLOW_HOST)
-        print("- MLFLOW_PORT   : ", self.MLFLOW_PORT)
-        print("- FLASK_HOST    : ", self.FLASK_HOST)
-        print("- FLASK_PORT    : ", self.FLASK_PORT)
-        print("---------------------------")
+    @property
+    def DATABASE_URI(self):
+        return f"mongodb://{self.DATABASE_USERNAME}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}?authSource=admin"
+
+
+class RemoteModelRegistryConfig(ServerConfig):
+    @property
+    def MODELREG_PORT(self):
+        return int(os.getenv("MODELREG_PORT"))
+
+    @property
+    def MODELREG_URI(self):
+        return f"http://{self.APPLICATION_SERVER}:{self.MODELREG_PORT}"
+
+
+class LocalBackendConfig:
+    @property
+    def BACKEND_HOST(self):
+        return os.getenv("BACKEND_HOST")
+
+    @property
+    def BACKEND_PORT(self):
+        return int(os.getenv("BACKEND_PORT"))
+
+    @property
+    def BACKEND_URI(self):
+        return f"http://{self.BACKEND_HOST}:{self.BACKEND_PORT}"
+
+
+class RemoteBackendConfig(ServerConfig):
+    @property
+    def BACKEND_PORT(self):
+        return int(os.getenv("BACKEND_PORT"))
+
+    @property
+    def BACKEND_URI(self):
+        return f"http://{self.APPLICATION_SERVER}:{self.BACKEND_PORT}"
+
+
+class LocalConfig(LocalBackendConfig, LocalDatabaseConfig, RemoteModelRegistryConfig):
+    pass
+
+
+class RemoteConfig(RemoteBackendConfig, RemoteModelRegistryConfig):
+    pass
+
+
+if __name__ == "__main__":
+
+    local = LocalConfig()
+    remote = RemoteConfig()
