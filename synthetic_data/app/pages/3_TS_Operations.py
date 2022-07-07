@@ -1,6 +1,7 @@
 import streamlit as st
-from common import api
-from common.vizu import plot_forecast_meta
+
+from synthetic_data.common import api
+from synthetic_data.common.vizu import plot_forecast_meta
 
 
 def run() -> None:

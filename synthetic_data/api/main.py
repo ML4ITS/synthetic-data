@@ -6,11 +6,12 @@ import mlflow
 import numpy as np
 import torch
 from bson import json_util
-from common.config import LocalConfig
 from flask import Flask, jsonify, request
 from flask_pymongo import PyMongo
 from mlflow.tracking import MlflowClient
 from requests import Response
+
+from synthetic_data.common.config import LocalConfig
 
 cfg = LocalConfig()
 app = Flask(__name__)

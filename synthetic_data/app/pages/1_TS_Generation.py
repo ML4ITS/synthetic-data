@@ -5,9 +5,6 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import timesynth as ts
-from common import api
-from common.helpers import strtobool
-from common.vizu import plot_timeseries
 from timesynth.noise.gaussian_noise import GaussianNoise
 from timesynth.signals.ar import AutoRegressive
 from timesynth.signals.car import CAR
@@ -15,6 +12,10 @@ from timesynth.signals.gaussian_process import GaussianProcess
 from timesynth.signals.narma import NARMA
 from timesynth.signals.pseudoperiodic import PseudoPeriodic
 from timesynth.signals.sinusoidal import Sinusoidal
+
+from synthetic_data.common import api
+from synthetic_data.common.helpers import strtobool
+from synthetic_data.common.vizu import plot_timeseries
 
 
 class ProcessType(Enum):

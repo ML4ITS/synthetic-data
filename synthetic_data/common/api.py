@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
-from common.config import LocalConfig
+
+from synthetic_data.common.config import LocalConfig
 
 cfg = LocalConfig()
 
