@@ -85,5 +85,7 @@ def _validate_preprocess_params(split_ratio: float, split_size: int) -> None:
     if split_size < 1:
         raise ValueError(f"Split size can't be less than 1, got {split_size}")
     elif split_size > 1:
-        if split_size % 4 != 0:  # x_train, y_train, x_test, y_test
+        # check if split_ratio == 1, then we can split as many times as we want
+        # if not, then we have to split accordingly to match sizes of x_train, y_train, x_test, y_test.
+        if split_ratio != 1 and split_size % 4 != 0:  # x_train, y_train, x_test, y_test
             raise ValueError(f"Split size must be divisible by 4, got {split_size}")
