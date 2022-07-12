@@ -142,7 +142,7 @@ def run() -> None:
         process_type = st.selectbox("Process type", process_types)
 
         # num_points = st.slider("Number of points", 0, 100_000, 100, 100)
-        num_points = st.number_input("Number of points", 0, 100_000, 100, 100)
+        num_points = st.number_input("Number of points", 0, 500_000, 100, 100)
 
         irregular = strtobool(st.radio("Irregular", ("False", "True"), horizontal=True))
         keep_percentage = st.slider(
@@ -179,10 +179,10 @@ def run() -> None:
             )
             frequency = st.slider(
                 "Frequency",
-                1.0,
-                100.0,
-                1.0,
-                0.1,
+                1,
+                100,
+                1,
+                1,
                 help="Frequency of the harmonic series",
             )
             time_samples, samples, default_parameters = generate_data(
