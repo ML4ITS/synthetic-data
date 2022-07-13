@@ -10,7 +10,7 @@ from torch.nn import MSELoss
 from torch.optim import LBFGS
 
 from synthetic_data.common.config import RemoteConfig
-from synthetic_data.common.preprocessing import normalize_dataset, reshape_and_split
+from synthetic_data.common.preprocessing import normalize_dataset, preprocess_dataset
 from synthetic_data.common.torchutils import get_device, move_to_device
 from synthetic_data.common.vizu import vizualize_and_save_prediction
 from synthetic_data.mlops.models.lstm import LSTM
@@ -75,28 +75,28 @@ def run_training_session(config, dataset=None):
 # USER INPUT
 NUM_TRIAL_RUNS = 1
 MODEL_NAME = "LSTM Baseline"
-DATASET_NAME = "Simple"
+DATASET_NAME = "H30"
 
 # (RARE) USER INPUT: Should we auto-adjust this?
 EXPERIMENT_NAME = "lstm_experiment"
 SPLIT_SIZE = 20
 SPLIT_RATIO = 0.3
-RESOURCES_PER_TRIAL = {"cpu": 1, "gpu": 0}
+RESOURCES_PER_TRIAL = {"cpu": 1, "gpu": 1}
 
-SHOULD_REGISTER = True
+SHOULD_REGISTER = False
 
 # ---
 cfg = RemoteConfig()
 
 dataset = load_dataset(cfg, DATASET_NAME)
-dataset = reshape_and_split(dataset, split_ratio=SPLIT_RATIO, split_size=SPLIT_SIZE)
+dataset = preprocess_dataset(dataset, SPLIT_RATIO, SPLIT_SIZE)
 dataset = normalize_dataset(dataset)
 
 
 config = {
     "hidden_layers": tune.choice([64, 96, 128]),
     "lr": tune.choice(np.arange(0.55, 1, 0.1, dtype=float).round(2).tolist()),
-    "epochs": tune.choice([8]),
+    "epochs": tune.choice([2]),
     "future": tune.choice([500]),
 }
 
