@@ -69,15 +69,6 @@ def vizualize_and_view_prediction(
     plt.show()
 
 
-def vizualize_dataset(dataset: np.ndarray, databatch: np.ndarray) -> None:
-    _, ax = plt.subplots(2, 1, figsize=(12, 6), constrained_layout=True)
-    ax[0].plot(dataset)
-    ax[0].set_title("Dataset", fontsize=16)
-    ax[1].plot(databatch)
-    ax[1].set_title("Batch", fontsize=16)
-    plt.show()
-
-
 def plot_timeseries(container, time_samples: np.ndarray, samples: np.ndarray) -> None:
     if not len(time_samples) > 0:
         return
