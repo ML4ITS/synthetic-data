@@ -1,8 +1,6 @@
-# inspired by https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/cgan/cgan.py
-from typing import List
+# inspired by https://github.com/eriklindernoren/PyTorch-GAN
 
 import torch
-from matplotlib import pyplot as plt
 from torch import nn
 
 
