@@ -5,11 +5,11 @@ from torch import nn
 
 
 class Generator(nn.Module):
-    def __init__(self, seq_length: int, latent_dim: int, n_classes: int) -> None:
+    def __init__(self, seq_length: int, n_classes: int, latent_dim: int) -> None:
         super().__init__()
         self.seq_length = seq_length
-        self.latent_dim = latent_dim
         self.n_classes = n_classes
+        self.latent_dim = latent_dim
 
         self.embedder = nn.Embedding(self.n_classes, self.n_classes)
         input_channels = self.latent_dim + self.n_classes
@@ -24,26 +24,20 @@ class Generator(nn.Module):
             nn.Linear(256, 512, bias=False),
             nn.BatchNorm1d(512),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 1024, bias=False),
-            nn.BatchNorm1d(1024),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(1024, output_channels),
+            nn.Linear(512, output_channels),
             nn.Tanh(),
         )
 
     def forward(self, noise: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         label_embedding = self.embedder(labels)
         noise = torch.cat((label_embedding, noise), -1)
-        signal = self.model(noise)
-        signal = signal.view(signal.size(0), self.seq_length)
-        return signal
+        return self.model(noise)
 
 
 class Discriminator(nn.Module):
-    def __init__(self, seq_length: int, latent_dim: int, n_classes: int) -> None:
+    def __init__(self, seq_length: int, n_classes: int) -> None:
         super().__init__()
         self.seq_length = seq_length
-        self.latent_dim = latent_dim
         self.n_classes = n_classes
 
         self.embedder = nn.Embedding(self.n_classes, self.n_classes)
@@ -53,18 +47,18 @@ class Discriminator(nn.Module):
         self.model = nn.Sequential(
             nn.Linear(input_channels, 512),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 512),
+            nn.Linear(512, 256),
             nn.Dropout(0.4),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 512),
+            nn.Linear(256, 128),
             nn.Dropout(0.4),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, output_channels),
+            nn.Linear(128, output_channels),
         )
 
     def forward(self, seq: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-        emb = self.embedder(labels)
-        seq = torch.cat((seq, emb), -1)
+        label_embedding = self.embedder(labels)
+        seq = torch.cat((seq, label_embedding), -1)
         return self.model(seq)
 
 
