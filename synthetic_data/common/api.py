@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import requests
 
@@ -6,11 +7,10 @@ from synthetic_data.common.config import LocalConfig
 cfg = LocalConfig()
 
 
-def save_time_series(name: str, ts: pd.DataFrame, params: dict) -> dict:
+def save_time_series(name: str, data: np.ndarray, params: dict) -> dict:
     payload = {
         "name": name,
-        "x": ts["x"].tolist(),
-        "y": ts["y"].tolist(),
+        "data": data.tolist(),
         "parameters": params,
     }
     ENDPOINT = cfg.URI_BACKEND_LOCAL + "/dataset"
@@ -20,7 +20,7 @@ def save_time_series(name: str, ts: pd.DataFrame, params: dict) -> dict:
 
 def get_all_time_series(limit: int = 100) -> list:
     ENDPOINT = cfg.URI_BACKEND_LOCAL + "/datasets"
-    response = requests.get(ENDPOINT, params={"limit": limit})
+    response = requests.get(ENDPOINT, params={"limit": int(limit)})
     return response.json()
 
 

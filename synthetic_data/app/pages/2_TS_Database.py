@@ -15,9 +15,7 @@ def run() -> None:
         limit = st.sidebar.number_input(
             "Show max datasets", value=5, min_value=1, max_value=10
         )
-
         response = api.get_all_time_series(limit=limit)
-
         if "error" in response:
             container.warning(f"{response['error']}")
             if "stacktrace" in response:

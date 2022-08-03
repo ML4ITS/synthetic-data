@@ -1,3 +1,4 @@
+import time
 from enum import Enum
 from typing import List, Tuple
 
@@ -5,6 +6,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import timesynth as ts
+from timesynth.noise.base_noise import BaseNoise
 from timesynth.noise.gaussian_noise import GaussianNoise
 from timesynth.signals.ar import AutoRegressive
 from timesynth.signals.car import CAR
@@ -16,6 +18,13 @@ from timesynth.signals.sinusoidal import Sinusoidal
 from synthetic_data.common import api
 from synthetic_data.common.helpers import strtobool
 from synthetic_data.common.vizu import plot_timeseries
+
+
+class GaussianNoise2D(GaussianNoise):
+    """Supports gaussian noise with 2D"""
+
+    def sample_vectorized(self, time_vector):
+        return np.random.normal(loc=self.mean, scale=self.std, size=time_vector.shape)
 
 
 class ProcessType(Enum):
@@ -58,30 +67,32 @@ def get_gaussian_process_signal(**kwargs):
 
 
 def get_time_samples(
-    num_points: int, keep_percentage: int, is_irregular: bool
+    seq_length: int, keep_percentage: int, is_irregular: bool
 ) -> np.ndarray:
     time_sampler = ts.TimeSampler(stop_time=1)  # default 1?
     if is_irregular:
         return time_sampler.sample_irregular_time(
-            num_points=num_points, keep_percentage=keep_percentage
+            seq_length=seq_length, keep_percentage=keep_percentage
         )
-    return time_sampler.sample_regular_time(num_points=num_points)
+    return time_sampler.sample_regular_time(num_points=seq_length)
 
 
 def generate_data(
     process_type: str,
-    num_points: int,
+    batch_size: int,
+    seq_length: int,
     keep_percentage: int,
     irregular: bool,
     std_noise: float,
     **kwargs,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, dict]:
     signal = None
 
     # default
     default_parameters = {
         "process_type": process_type,
-        "num_points": num_points,
+        "batch_size": batch_size,
+        "seq_length": seq_length,
         "keep_percentage": keep_percentage,
         "irregular": irregular,
         "std_noise": std_noise,
@@ -114,23 +125,19 @@ def generate_data(
     if process_type == ProcessType.NARMA.value:
         signal = NARMA(order=kwargs.get("order"))
 
-    time_samples = get_time_samples(num_points, keep_percentage, irregular)
-    noise = GaussianNoise(std=std_noise)  # we only use the white noise
+    time_samples = get_time_samples(seq_length, keep_percentage, irregular)
+    if batch_size > 1 and process_type == ProcessType.HARMONIC.value:
+        # reconstruct the time_samples array by repeating time_samples,
+        # the number of times given by the batch size.
+        # e.g. (20,) => (batch_size, 20)
+        time_samples = np.tile(time_samples, (batch_size, 1))
 
-    timeseries = ts.TimeSeries(signal, noise_generator=noise)
+    noise = GaussianNoise2D(std=std_noise)
+    timeseries = ts.TimeSeries(signal, noise)
     samples, _, _ = timeseries.sample(time_samples)
     return time_samples, samples, parameters
 
 
-def build_base_dataframes(
-    columns: List[str] = ["x", "y"]
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    df1 = pd.DataFrame(columns=columns)
-    df2 = pd.DataFrame(columns=columns)
-    return df1, df2
-
-
-# Your app goes in the function run()
 def run() -> None:
     container = st.container()
     container.header("Generate Time-Series")
@@ -141,8 +148,19 @@ def run() -> None:
         process_types = [key.value for key in ProcessType]
         process_type = st.selectbox("Process type", process_types)
 
-        # num_points = st.slider("Number of points", 0, 100_000, 100, 100)
-        num_points = st.number_input("Number of points", 0, 500_000, 100, 100)
+        seq_length = st.number_input("Sequence length", 0, 5000, 100, 10)
+
+        # NOTE: Generating Time-Series with more then 1 sequence is
+        # only currently supported for HARMONIC
+        # I've not tested other process types yet, therefore disabled
+        batch_size = st.number_input(
+            "Number of sequences",
+            0,
+            100_000,
+            1,
+            100,
+            disabled=process_type != ProcessType.HARMONIC.value,
+        )
 
         irregular = strtobool(st.radio("Irregular", ("False", "True"), horizontal=True))
         keep_percentage = st.slider(
@@ -166,8 +184,6 @@ def run() -> None:
         )
         time_samples, samples, default_parameters = [], [], {}
 
-        df, df_tmp = build_base_dataframes()
-
         if process_type == ProcessType.HARMONIC.value:
             amplitude = st.slider(
                 "Amplitude",
@@ -185,19 +201,17 @@ def run() -> None:
                 1,
                 help="Frequency of the harmonic series",
             )
+
             time_samples, samples, default_parameters = generate_data(
                 process_type=process_type,
-                num_points=num_points,
+                batch_size=batch_size,
+                seq_length=seq_length,
                 keep_percentage=keep_percentage,
                 irregular=irregular,
                 std_noise=std_noise,
                 frequency=frequency,
                 amplitude=amplitude,
             )
-            # Gather data and render plot
-            df_tmp.x = time_samples
-            df_tmp.y = samples
-            df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
             plot_timeseries(container, time_samples, samples)
 
         if process_type == ProcessType.GAUSSIAN_PROCESS.value:
@@ -206,68 +220,57 @@ def run() -> None:
             kernel = st.radio("Kernel", kernel_types)
 
             if kernel == ProcessKernel.SE.value:
-                df, df_tmp = build_base_dataframes()
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
-                    num_points=num_points,
+                    batch_size=batch_size,
+                    seq_length=seq_length,
                     keep_percentage=keep_percentage,
                     irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                 )
-                df_tmp.x = time_samples
-                df_tmp.y = samples
-                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.CONSTANT.value:
-                df, df_tmp = build_base_dataframes()
-                # All covariances set to `variance`
                 variance = st.slider("variance", 0.0, 1.0, 1.0, 0.1)
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
-                    num_points=num_points,
+                    batch_size=batch_size,
+                    seq_length=seq_length,
                     keep_percentage=keep_percentage,
                     irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     variance=variance,
                 )
-                df_tmp.x = time_samples
-                df_tmp.y = samples
-                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.EXPONENTIAL.value:
                 gamma = st.slider("gamma", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
-                    num_points=num_points,
+                    batch_size=batch_size,
+                    seq_length=seq_length,
                     keep_percentage=keep_percentage,
                     irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     gamma=gamma,
                 )
-                df_tmp.x = time_samples
-                df_tmp.y = samples
-                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.RQ.value:
                 alpha = st.slider("alpha", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
-                    num_points=num_points,
+                    batch_size=batch_size,
+                    seq_length=seq_length,
                     keep_percentage=keep_percentage,
                     irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     alpha=alpha,
                 )
-                df_tmp.x = time_samples
-                df_tmp.y = samples
-                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.LINEAR.value:
@@ -275,7 +278,8 @@ def run() -> None:
                 offset = st.slider("offset", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
-                    num_points=num_points,
+                    batch_size=batch_size,
+                    seq_length=seq_length,
                     keep_percentage=keep_percentage,
                     irregular=irregular,
                     std_noise=std_noise,
@@ -283,46 +287,37 @@ def run() -> None:
                     c=c,
                     offset=offset,
                 )
-                df_tmp.x = time_samples
-                df_tmp.y = samples
-                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.MATERN.value:
                 nu = st.slider("nu", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
-                    num_points=num_points,
+                    batch_size=batch_size,
+                    seq_length=seq_length,
                     keep_percentage=keep_percentage,
                     irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     nu=nu,
                 )
-                df_tmp.x = time_samples
-                df_tmp.y = samples
-                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.PERIODIC.value:
                 period = st.slider("period", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
-                    num_points=num_points,
+                    batch_size=batch_size,
+                    seq_length=seq_length,
                     keep_percentage=keep_percentage,
                     irregular=irregular,
                     std_noise=std_noise,
                     kernel=kernel,
                     period=period,
                 )
-                df_tmp.x = time_samples
-                df_tmp.y = samples
-                df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
                 plot_timeseries(container, time_samples, samples)
 
         if process_type == ProcessType.PSEUDO_PERIODIC.value:
-            df, df_tmp = build_base_dataframes()
-
             amplitude = st.slider(
                 "Amplitude",
                 0.0,
@@ -358,7 +353,8 @@ def run() -> None:
 
             time_samples, samples, default_parameters = generate_data(
                 process_type=process_type,
-                num_points=num_points,
+                batch_size=batch_size,
+                seq_length=seq_length,
                 keep_percentage=keep_percentage,
                 irregular=irregular,
                 std_noise=std_noise,
@@ -367,14 +363,9 @@ def run() -> None:
                 frequency=frequency,
                 freqSD=freqSD,
             )
-            # Gather data and render plot
-            df_tmp.x = time_samples
-            df_tmp.y = samples
-            df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
             plot_timeseries(container, time_samples, samples)
 
         if process_type == ProcessType.AUTO_REGRESSIVE.value:
-            df, df_tmp = build_base_dataframes()
             use_ar2 = st.checkbox("Use AR2, else AR1")
             phi_1 = st.slider(f"phi_1", 0.0, 2.0, 1.0, 0.1)
             phi_2 = st.slider(f"phi_2", 0.0, 2.0, 1.0, 0.1, disabled=not use_ar2)
@@ -386,52 +377,41 @@ def run() -> None:
 
             time_samples, samples, default_parameters = generate_data(
                 process_type=process_type,
-                num_points=num_points,
+                batch_size=batch_size,
+                seq_length=seq_length,
                 keep_percentage=100,  # required
                 irregular=False,  # required
                 std_noise=std_noise,
                 ar_param=ar_param,
             )
-            # Gather data and render plot
-            df_tmp.x = time_samples
-            df_tmp.y = samples
-            df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
             plot_timeseries(container, time_samples, samples)
 
         if process_type == ProcessType.CAR.value:
-            df, df_tmp = build_base_dataframes()
             ar_param = st.slider(
                 f"ar_param", 0.0, 2.0, 1.0, 0.1, help="Parameter of the AR(1) process"
             )
             time_samples, samples, default_parameters = generate_data(
                 process_type=process_type,
-                num_points=num_points,
+                batch_size=batch_size,
+                seq_length=seq_length,
                 keep_percentage=100,  # required
                 irregular=False,  # required
                 std_noise=std_noise,
                 ar_param=ar_param,
             )
-            # Gather data and render plot
-            df_tmp.x = time_samples
-            df_tmp.y = samples
-            df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
             plot_timeseries(container, time_samples, samples)
 
         if process_type == ProcessType.NARMA.value:
-            df, df_tmp = build_base_dataframes()
             order = st.slider("order", 1, 10, 3, 1, help="Order of the NARMA process")
             time_samples, samples, default_parameters = generate_data(
                 process_type=process_type,
-                num_points=num_points,
+                batch_size=batch_size,
+                seq_length=seq_length,
                 keep_percentage=100,  # required
                 irregular=False,  # required
                 std_noise=std_noise,
                 order=order,
             )
-            # Gather data and render plot
-            df_tmp.x = time_samples
-            df_tmp.y = samples
-            df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
             plot_timeseries(container, time_samples, samples)
 
         def form_callback():
@@ -440,7 +420,7 @@ def run() -> None:
 
             if name == "":
                 return
-            response = api.save_time_series(name, df, default_parameters)
+            response = api.save_time_series(name, samples, default_parameters)
 
             if "error" in response:
                 st.error(response["error"])
