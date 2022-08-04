@@ -11,5 +11,7 @@ def load_dataset(cfg: RemoteConfig, name: str) -> np.ndarray:
     if "error" in response:
         raise FileNotFoundError(response["error"])
     dataset = response["dataset"]
-    dataset = np.array(dataset["y"])  # only need the y-value (?)
-    return dataset.reshape(1, -1)  # returns with shape (1, N)
+    dataset = np.array(dataset["data"])
+    if dataset.ndim == 1:
+        dataset = dataset.reshape(-1, 1)
+    return dataset
