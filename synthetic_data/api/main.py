@@ -42,6 +42,12 @@ def get_names():
         return error_response("No names found", 404)
 
 
+@app.route("/del", methods=["GET"])
+def delete_timeseries():
+    info = mongo.db.datasets.delete_many({})
+    return jsonify({"deleted": info.deleted_count})
+
+
 @app.route("/datasets", methods=["GET"])
 def get_datasets():
     if request.method == "GET":
