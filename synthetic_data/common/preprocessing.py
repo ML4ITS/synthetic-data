@@ -23,7 +23,7 @@ def normalize_dataset(
         raise TypeError(f"Data must be provided as torch.Tensor (/list)")
 
 
-def preprocess_dataset(
+def preprocess_dataset1D(
     data: np.ndarray, split_ratio: float, split_size: int
 ) -> Tuple[torch.Tensor]:
     """Reshapes the data (np.ndarray) from (1 x N) to (split_size, N/split_size) and
@@ -36,6 +36,11 @@ def preprocess_dataset(
 
     data = reshape_data(data, split_size)
     data = split_data(data, split_ratio)
+    data = to_tensor(data)
+    return data
+
+
+def preprocess_dataset2D(data: np.ndarray) -> Tuple[torch.Tensor]:
     data = to_tensor(data)
     return data
 
