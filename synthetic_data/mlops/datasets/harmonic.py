@@ -4,7 +4,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 from synthetic_data.common.config import RemoteConfig
-from synthetic_data.common.preprocessing import normalize_dataset, preprocess_dataset
+from synthetic_data.common.preprocessing import preprocess_dataset1D
 from synthetic_data.mlops.tools.api import load_dataset
 
 
@@ -24,6 +24,6 @@ class HarmonicDataset(Dataset):
     def _load_dataset(self) -> Union[Tensor, List[Tensor]]:
         cfg = RemoteConfig()
         dataset = load_dataset(cfg, self.name)
-        dataset = preprocess_dataset(dataset, self.split_ratio, self.split_size)
+        dataset = preprocess_dataset1D(dataset, self.split_ratio, self.split_size)
         # dataset = normalize_dataset(dataset)
         return dataset
