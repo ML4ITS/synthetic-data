@@ -47,19 +47,20 @@ class Discriminator(nn.Module):
         self.model = nn.Sequential(
             nn.Linear(input_channels, 512),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 256),
+            nn.Linear(512, 512),
             nn.Dropout(0.4),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(256, 128),
+            nn.Linear(512, 512),
             nn.Dropout(0.4),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(128, output_channels),
+            nn.Linear(512, output_channels),
         )
 
     def forward(self, seq: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         label_embedding = self.embedder(labels)
         seq = torch.cat((seq, label_embedding), -1)
-        return self.model(seq)
+        out = self.model(seq.float())
+        return out.squeeze()
 
 
 if __name__ == "__main__":
