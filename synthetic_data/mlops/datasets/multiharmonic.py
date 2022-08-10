@@ -65,11 +65,11 @@ class MultiHarmonicDataset(Dataset):
         _path_to_labels = os.path.join(self.savedir, "labels.pt")
 
         if os.path.exists(_path_to_data) and os.path.exists(_path_to_labels):
-            print("Loading data ...")
+            print(f"Loaded data from {self.savedir}")
             self.data = torch.load(_path_to_data)
             self.labels = torch.load(_path_to_labels)
         else:
-            print("Fetching data...")
+            print("Requesting data from API...")
             self.data, self.labels = _fetch_dataset(self.names, self.label_map)
             if save:
                 os.makedirs(self.savedir, exist_ok=True)
