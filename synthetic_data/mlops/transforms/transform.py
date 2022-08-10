@@ -22,8 +22,8 @@ class RandomRoll(torch.nn.Module):
 
         _min = 0
         _max = len(sequence)
-        _roll = torch.randint(_min, _max, (1,)).item()
+        _shifts = int(torch.randint(_min, _max, (1,)).item())
 
-        sequence = torch.roll(sequence, _roll, dims=0)
+        sequence = torch.roll(sequence, _shifts, dims=0)
 
         return sequence, target
