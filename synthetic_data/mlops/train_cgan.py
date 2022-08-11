@@ -1,135 +1,172 @@
 import os
+from functools import partial
 from typing import Any, Dict
 
 import matplotlib.pyplot as plt
+import mlflow
 import numpy as np
+import ray
 import torch
 from ray import tune
+from ray.tune.integration.mlflow import MLflowLoggerCallback
+from torch.nn import MSELoss
+from torch.optim import Adam
 from torch.utils.data import DataLoader
+from torchvision.transforms import Compose
 
+from synthetic_data.common.config import RemoteConfig
 from synthetic_data.common.torchutils import get_device
-from synthetic_data.mlops.models.cgan import Discriminator, Generator
+from synthetic_data.mlops.datasets.multiharmonic import MultiHarmonicDataset
+from synthetic_data.mlops.models.cwgan_gp import Discriminator, Generator
+from synthetic_data.mlops.models.cwgan_gp import __name__ as model_script
+from synthetic_data.mlops.tools.summary import summarize_conditional_gan
+from synthetic_data.mlops.transforms.transform import RandomRoll
 
 
 class Trainer:
     def __init__(
         self,
-        generator: Generator,
-        discriminator: Discriminator,
-        optimG: torch.optim.Optimizer,
-        optimD: torch.optim.Optimizer,
-        criterion: torch.nn.modules.loss,
+        modelG: torch.nn.Module,
+        modelD: torch.nn.Module,
+        optimG: Adam,
+        optimD: Adam,
+        criterion: MSELoss,
         params: Dict[str, Any],
     ):
-        self.generator = generator
-        self.discriminator = discriminator
+        self.modelG = modelG
+        self.modelD = modelD
         self.optimG = optimG
         self.optimD = optimD
         self.criterion = criterion
         self.params = params
-        self.losses = {"lossG": [], "lossD": []}
         self.device = get_device()
         os.makedirs("checkpoints", exist_ok=True)
         os.makedirs("outputs", exist_ok=True)
 
     def _train_epoch(self, dataloader: DataLoader, epoch: int) -> None:
+        running_gloss = []
+        running_dloss = []
+
         for i, batch in enumerate(dataloader):
+            global_step = i + epoch * len(dataloader.dataset)
+
             real_sequences = batch[0].to(self.device)
             real_labels = batch[1].to(self.device)
             batch_size = real_sequences.shape[0]
-            target_shape = (batch_size,)
 
-            true_targets = torch.ones(target_shape, device=self.device)
-            fake_targets = torch.zeros(target_shape, device=self.device)
+            true_targets = torch.ones(real_labels.shape, device=self.device)
+            fake_targets = torch.zeros(real_labels.shape, device=self.device)
 
             noise_shape = (batch_size, self.params["z_dim"])
             rand_noise = torch.randn(noise_shape, device=self.device)
             n_classes = self.params["n_classes"]
-            rand_targets = torch.randint(0, n_classes, target_shape, device=self.device)
+            rand_targets = torch.randint(
+                0, n_classes, real_labels.shape, device=self.device
+            )
 
             # Generate fake sequences
-            fake_sequences = self.generator(rand_noise, rand_targets)
-            logits = self.discriminator(fake_sequences, rand_targets)
+            fake_sequences = self.modelG(rand_noise, rand_targets)
+            logits = self.modelD(fake_sequences, rand_targets)
             lossG = self.criterion(logits, true_targets)
 
             self.optimG.zero_grad()
             lossG.backward()
             self.optimG.step()
-            self.losses["lossG"].append(lossG.data.item())
+            running_gloss.append(lossG.data.item())
 
             # Discriminate on real sequences
-            logits = self.discriminator(real_sequences, real_labels)
+            logits = self.modelD(real_sequences, real_labels)
             lossD_real = self.criterion(logits, true_targets)
             # Discriminate on fake sequences
-            logits = self.discriminator(fake_sequences, rand_targets)
+            logits = self.modelD(fake_sequences.detach(), rand_targets)
             lossD_fake = self.criterion(logits, fake_targets)
             lossD = (lossD_real + lossD_fake) / 2
 
             self.optimD.zero_grad()
             lossD.backward()
             self.optimD.step()
-            self.losses["lossD"].append(lossD.data.item())
 
-            if i % self.params["print_every"] == 0:
+            # LOG every 20th sample
+            if global_step % 20 == 0:
                 global_step = i + epoch * len(dataloader.dataset)
+                running_gloss.append(lossG.data.item())
+                running_dloss.append(lossD.data.item())
+
                 tune.report(
                     epoch=epoch,
                     global_step=global_step,
-                    lossG=self.losses["lossG"][-1],
-                    lossC=self.losses["lossC"][-1],
+                    lossG=lossG.data.item(),
+                    lossD=lossD.data.item(),
                 )
 
+        avg_gloss = sum(running_gloss) / len(running_gloss)
+        avg_dloss = sum(running_dloss) / len(running_dloss)
+        return avg_gloss, avg_dloss
+
     def train(self, dataloader: DataLoader, epochs: int) -> None:
+        avg_gloss = []
+        avg_dloss = []
+
         for epoch in range(epochs):
-            self._train_epoch(dataloader, epoch + 1)
-            self._eval_and_savefig(epoch)
-            self._save_statedict(epoch)
+            avg_g, avg_d = self._train_epoch(dataloader, epoch + 1)
+            avg_gloss.append(avg_g)
+            avg_dloss.append(avg_d)
+
+            if epochs % 5 == 0:
+                self._eval_and_savefig(epoch)
+                self._save_statedict(epoch)
+
+        plt.figure(figsize=(14, 12), dpi=300)
+        plt.plot(avg_gloss, label="G")
+        plt.plot(avg_dloss, label="D")
+        plt.legend()
+        plt.title("Average batch loss")
+        plt.savefig("outputs/avg_losses.png")
+        plt.close()
 
     @torch.no_grad()
     def _eval_and_savefig(self, epoch):
-        epoch_dir = os.path.join("outputs", str(epoch))
-        os.makedirs(epoch_dir, exist_ok=True)
+        self.modelG.eval()
+
         n_classes = self.params["n_classes"]
-
-        noise = torch.randn((n_classes, self.args["z_dim"]), device=self.device)
         labels = torch.arange(n_classes, device=self.device)
+        noise = torch.randn((n_classes, self.params["z_dim"]), device=self.device)
 
-        self.generator.eval()
-        sequences = self.generator(noise, labels)
-        self.generator.train()
+        sequences = self.modelG(noise, labels)
 
         fig, axis = plt.subplots(
             nrows=n_classes,
             ncols=1,
             figsize=(14, 12),
-            dpi=100,
+            dpi=300,
             sharex=True,
             sharey=True,
             constrained_layout=True,
         )
 
         for i in range(n_classes):
-            sequence = sequences[i]
+            sequence = sequences[i].detach().numpy()
             axis[i].plot(sequence, label=f"{i+1} Hz")
             axis[i].legend(loc="upper right")
 
-        fig.suptitle("Generated sequences")
+        fig.suptitle("Generated frequencies")
         fig.supxlabel("Time steps")
         fig.supylabel("Amplitude")
-        fig.savefig(os.path.join(epoch_dir, "sequences.png"))
+        fig.savefig(f"outputs/epoch_{epoch}.png")
+        plt.close(fig)
+        self.modelG.train()
 
     def _save_statedict(self, epoch):
-        if epoch % self.params["checkpoint_frequency"] == 0:
-            torch.save(
-                {
-                    "epoch": epoch,
-                    "d_state_dict": self.discriminator.state_dict(),
-                    "g_state_dict": self.generator.state_dict(),
-                    "d_opt_state_dict": self.optimC.state_dict(),
-                    "g_opt_state_dict": self.optimG.state_dict(),
-                },
-                f"checkpoints/epoch_{epoch}.pkl",
-            )
+        torch.save(
+            {
+                "epoch": epoch,
+                "modelG": self.modelG.state_dict(),
+                "modelD": self.modelD.state_dict(),
+                "optimG": self.optimG.state_dict(),
+                "optimD": self.optimD.state_dict(),
+            },
+            f"checkpoints/epoch_{epoch}.pkl",
+        )
 
 
 def run_training_session(config, dataset=None):
@@ -138,39 +175,106 @@ def run_training_session(config, dataset=None):
 
     device = get_device()
 
-    SPLIT_SIZE = None  # TODO
-    SPLIT_RATIO = None  # TODO
-    DATASET_NAME = None  # TODO
+    dataset_names = [
+        "Harmon 1",
+        "Harmon 2",
+        "Harmon 3",
+        "Harmon 4",
+        "Harmon 5",
+        "Harmon 6",
+        "Harmon 7",
+        "Harmon 8",
+        "Harmon 9",
+        "Harmon 10",
+    ]
 
-    dataset = None  # TODO
-    dataloader = None  # TODO
+    dataset_labels = {
+        "1": 0,
+        "2": 1,
+        "3": 2,
+        "4": 3,
+        "5": 4,
+        "6": 5,
+        "7": 6,
+        "8": 7,
+        "9": 8,
+        "10": 9,
+    }
 
-    n_classes = None  # TODO
-    latent_dim = None  # TODO
-    print_every = None  # TODO
-    seq_length = None  # TODO
+    transforms = Compose([RandomRoll(p=-1.0)])
 
-    generator = Generator(seq_length, n_classes, latent_dim)
-    generator.to(device)
+    dataset = MultiHarmonicDataset(
+        names=dataset_names,
+        label_map=dataset_labels,
+        transforms=transforms,
+        save=True,
+    )
 
-    discriminator = Discriminator(seq_length, n_classes)
-    discriminator.to(device)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=config["batch_size"],
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        drop_last=True,
+    )
 
-    criterion = torch.nn.MSELoss()
-    optimG = torch.optim.Adam(None, lr=None, betas=None)
-    optimD = torch.optim.Adam(None, lr=None, betas=None)
+    params = dict(
+        z_dim=100,
+        n_classes=10,
+        seq_length=dataset.get_sequence_length(),
+    )
 
-    params = None  # TODO
+    modelG = Generator(params["seq_length"], params["n_classes"], params["z_dim"])
+    modelG.to(device)
 
-    trainer = Trainer(generator, discriminator, optimG, optimD, criterion, params)
+    modelD = Discriminator(params["seq_length"], params["n_classes"])
+    modelD.to(device)
+
+    summarize_conditional_gan(Generator, Discriminator, params["n_classes"])
+
+    criterion = MSELoss()
+    optimG = Adam(modelG.parameters(), lr=config["lr"], betas=(0.5, 0.999))
+    optimD = Adam(modelD.parameters(), lr=config["lr"], betas=(0.5, 0.999))
+
+    trainer = Trainer(modelG, modelD, optimG, optimD, criterion, params)
     trainer.train(dataloader, epochs=config["epochs"])
 
 
 if __name__ == "__main__":
 
-    NUM_TRIAL_RUNS = None  # TODO
-    EXPERIMENT_NAME = None  # TODO
-    RESOURCES_PER_TRIAL = None  # TODO
+    NUM_TRIAL_RUNS = 1
+    EXPERIMENT_NAME = "cgan_experiment"
+    RESOURCES_PER_TRIAL = {"cpu": 2, "gpu": 1}
 
-    config = None  # TODO
-    analysis = None  # TODO
+    config = {
+        "lr": tune.choice([0.0002]),
+        "epochs": tune.choice([200]),
+        "batch_size": tune.grid_search([128]),
+    }
+
+    ray.init()
+    cfg = RemoteConfig()
+    mlflow.set_tracking_uri(cfg.URI_MODELREG_REMOTE)
+
+    analysis = tune.run(
+        partial(run_training_session, dataset=None),
+        name=EXPERIMENT_NAME,
+        mode="min",
+        verbose=0,
+        num_samples=NUM_TRIAL_RUNS,
+        log_to_file=["stdout.txt", "stderr.txt"],
+        resources_per_trial=RESOURCES_PER_TRIAL,
+        sync_config=tune.SyncConfig(syncer=None),
+        local_dir="/tmp/ray_runs",
+        config=config,
+        callbacks=[
+            MLflowLoggerCallback(
+                tracking_uri=cfg.URI_MODELREG_REMOTE,
+                registry_uri=cfg.URI_MODELREG_REMOTE,
+                experiment_name=EXPERIMENT_NAME,
+                save_artifact=True,
+                tags={"model_script": model_script},
+            )
+        ],
+    )
