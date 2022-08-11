@@ -15,3 +15,6 @@ exclude = '''
 
 [tool.isort]
 profile = "black"
+
+[mypy]
+ignore_missing_imports = true
