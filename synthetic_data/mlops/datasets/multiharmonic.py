@@ -40,7 +40,7 @@ class MultiHarmonicDataset(Dataset):
 
     _name = "MultiHarmonicDataset"
 
-    _COMPUTE_FOLDER = "/data/summer_internship22/cgan"
+    _COMPUTE_FOLDER = "/data/summer_internship22/datasets"
     _path_to_dataset = os.path.join(_COMPUTE_FOLDER, _name)
 
     def __init__(
