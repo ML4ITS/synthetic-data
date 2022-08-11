@@ -5,6 +5,12 @@ import torch
 
 
 class RandomRoll(torch.nn.Module):
+    """Randomly rolls the input sequence along the time dimension.
+
+    Args:
+        p: The probability of we should roll or not.
+    """
+
     def __init__(self, p: float = 0.5) -> None:
         super().__init__()
         self.p = p
@@ -13,7 +19,15 @@ class RandomRoll(torch.nn.Module):
     def forward(
         self, sample: Tuple[torch.Tensor, torch.Tensor]
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Depending on p, either rolls the sequence,
+        retrives from input sample
 
+        Args:
+            sample (Tuple[torch.Tensor, torch.Tensor]): sequence, label
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: sequence, label
+        """
         sequence = sample[0]
         target = sample[1]
 
