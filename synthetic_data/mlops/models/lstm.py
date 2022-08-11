@@ -54,3 +54,10 @@ class LSTM(torch.nn.Module):
             outputs += [output]
 
         return torch.cat(outputs, dim=1)
+
+
+if __name__ == "__main__":
+
+    from synthetic_data.mlops.tools.summary import summarize_lstm
+
+    summarize_lstm(LSTM)
