@@ -1,75 +1,58 @@
 import os
-from functools import partial
+from typing import Any, Dict, List
 
 import matplotlib.pyplot as plt
 import mlflow
 import numpy as np
 import ray
 import torch
-from bokeh.io import output_file, save
-from bokeh.layouts import gridplot
-from bokeh.plotting import figure
 from ray import tune
 from ray.tune.integration.mlflow import MLflowLoggerCallback
 from torch.autograd import grad as torch_grad
+from torch.optim import Adam, RMSprop
 from torch.utils.data import DataLoader
+from torchvision.transforms import Compose
 
 from synthetic_data.common.config import RemoteConfig
 from synthetic_data.common.torchutils import get_device
-from synthetic_data.mlops.models.wgan_gp import Critic, Generator
-from synthetic_data.mlops.tmp.data import HarmonicDataset
+from synthetic_data.mlops.datasets.multiharmonic import MultiHarmonicDataset
+from synthetic_data.mlops.models.wgan_gp import Discriminator, Generator
+from synthetic_data.mlops.models.wgan_gp import __name__ as model_script
+from synthetic_data.mlops.tools.summary import summarize_gan
+from synthetic_data.mlops.transforms.transform import RandomRoll
 
 
 class Trainer:
     def __init__(
         self,
-        generator,
-        critic,
-        optimG,
-        optimC,
-        seq_length: int,
-        gp_weight: int = 10,
-        critic_iterations: int = 5,
-        print_every: int = 200,
-        checkpoint_frequency: int = 200,
-        plotmode: str = "plt",  # "plt" | "bokeh"
+        modelG: torch.nn.Module,
+        modelD: torch.nn.Module,
+        optimG: RMSprop,
+        optimC: RMSprop,
+        params: Dict[str, Any],
     ):
-        self.generator = generator
-        self.critic = critic
+        self.modelG = modelG
+        self.modelD = modelD
         self.optimG = optimG
         self.optimC = optimC
-        self.seq_length = seq_length
-        self.losses = {"lossG": [], "lossC": [], "gradPenalty": [], "gradNorm": []}
-        self.num_steps = 0
-        self.gp_weight = gp_weight
-        self.critic_iterations = critic_iterations
-        self.print_every = print_every
-        self.checkpoint_frequency = checkpoint_frequency
+        self.params = params
+        self.losses: Dict[str, list] = {
+            "lossG": [],
+            "lossD": [],
+            "gradPenalty": [],
+            "gradNorm": [],
+        }
         self.device = get_device()
-        self.plotmode = plotmode
+        os.makedirs("checkpoints", exist_ok=True)
+        os.makedirs("outputs", exist_ok=True)
 
-        if self.plotmode == "plt":
-            self.fixdir = os.path.join("outputs", "fixed")
-            self.dyndir = os.path.join("outputs", "dynamic")
-            os.makedirs(self.fixdir, exist_ok=True)
-            os.makedirs(self.dyndir, exist_ok=True)
-        elif self.plotmode == "bokeh":
-            outdir = os.path.join("outputs")
-            os.makedirs(outdir, exist_ok=True)
-            output_file(f"{outdir}/epochs.html")
-            self.bokeh_figures = []
-        else:
-            raise ValueError(f"Unknown plotmode {self.plotmode}")
+    def _train_critic(self, real_data: torch.Tensor) -> None:
 
-    def train_critic(self, real_data):
-        batch_size = real_data.size(0)
-        noise_shape = (batch_size, self.seq_length)
-        noise = torch.randn(noise_shape, device=self.device)
+        noise = self._generate_noise(batch_size=real_data.size(0))
 
-        fake_data = self.generator(noise)
-
-        real_logits = self.critic(real_data)
-        fake_logits = self.critic(fake_data)
+        fake_data = self.modelG(noise)
+        real_logits = self.modelD(real_data)
+        fake_logits = self.modelD(fake_data)
 
         gradient_penalty = self._gradient_penalty(real_data, fake_data)
 
@@ -80,22 +63,18 @@ class Trainer:
         self.optimC.step()
 
         self.losses["gradPenalty"].append(gradient_penalty.data.item())
-        self.losses["lossC"].append(loss.data.item())
+        self.losses["lossD"].append(loss.data.item())
 
-    def train_generator(self, data):
-        batch_size = data.size(0)
-        noise_shape = (batch_size, self.seq_length)
-        noise = torch.randn(noise_shape, device=self.device)
+    def _train_generator(self, data):
+        noise = self._generate_noise(batch_size=data.size(0))
 
-        fake_data = self.generator(noise)
-
-        fake_logits = self.critic(fake_data)
+        fake_data = self.modelG(noise)
+        fake_logits = self.modelD(fake_data)
         loss = -fake_logits.mean()
 
         self.optimG.zero_grad()
         loss.backward()
         self.optimG.step()
-
         self.losses["lossG"].append(loss.data.item())
 
     def _gradient_penalty(self, real_data, generated_data):
@@ -108,7 +87,7 @@ class Trainer:
         interpolated = interpolated.clone().detach().requires_grad_(True)
 
         # Pass interpolated data through Critic
-        prob_interpolated = self.critic(interpolated)
+        prob_interpolated = self.modelD(interpolated)
 
         # Calculate gradients of probabilities with respect to examples
         gradients = torch_grad(
@@ -127,203 +106,172 @@ class Trainer:
         # square root, so manually calculate norm and add epsilon
         gradients_norm = torch.sqrt(torch.sum(gradients**2, dim=1) + 1e-12)
 
-        return self.gp_weight * ((gradients_norm - 1) ** 2).mean()
+        return self.params["gp_weight"] * ((gradients_norm - 1) ** 2).mean()
 
-    def _train_epoch(self, dataloader, epoch):
-        for i, data in enumerate(dataloader):
-            self.num_steps += 1
+    def _train_epoch(self, dataloader: DataLoader, epoch: int) -> None:
+        for i, (data, _) in enumerate(dataloader):
+            global_step = i + epoch * len(dataloader.dataset)
             data = data.to(self.device)
 
-            self.train_critic(data.float())
+            self._train_critic(data.float())
 
-            # Only update generator every critic_iterations iterations
-            if self.num_steps % self.critic_iterations == 0:
-                self.train_generator(data)
+            # Update generator every critic_iterations iterations
+            if global_step % self.params["critic_iterations"] == 0:
+                self._train_generator(data)
 
-            if i % self.print_every == 0:
-                global_step = i + epoch * len(dataloader.dataset)
+            # LOG every 20th sample
+            if global_step % 20 == 0:
+                tune.report(
+                    epoch=epoch,
+                    global_step=global_step,
+                    lossG=self.losses["lossG"][-1],
+                    lossD=self.losses["lossD"][-1],
+                    grad_penality=self.losses["gradPenalty"][-1],
+                    grad_norm=self.losses["gradNorm"][-1],
+                )
 
-                if self.num_steps > self.critic_iterations:
-                    tune.report(
-                        epoch=epoch,
-                        global_step=global_step,
-                        lossG=self.losses["lossG"][-1],
-                        lossC=self.losses["lossC"][-1],
-                        grad_penality=self.losses["gradPenalty"][-1],
-                        grad_norm=self.losses["gradNorm"][-1],
-                    )
-                else:
-                    tune.report(
-                        global_step=global_step,
-                        lossC=self.losses["lossC"][-1],
-                        grad_penality=self.losses["gradPenalty"][-1],
-                        grad_norm=self.losses["gradNorm"][-1],
-                    )
+    def _generate_noise(self, batch_size: int = 1) -> torch.Tensor:
+        noise_shape = (batch_size, self.params["z_dim"])
+        return torch.randn(noise_shape, device=self.device)
 
-    def train(self, dataloader, epochs):
-        noise_shape = (1, self.seq_length)
-        fixed_latents = torch.randn(noise_shape, device=self.device)
+    def train(self, dataloader: DataLoader, epochs: int) -> None:
+        fixed_latents = self._generate_noise()
 
         for epoch in range(epochs):
-            self._train_epoch(dataloader, epoch + 1)
+            self._train_epoch(dataloader, epoch)
+            # self._save_statedict(epoch)
+            # Sample a new distribution to check for mode collapse
+            if epochs % 5 == 0:
+                dynamic_latents = self._generate_noise()
+                self._eval_and_savefig_plt(epoch, fixed_latents, dynamic_latents)
 
-            if epoch % self.checkpoint_frequency == 0:
-                self.save_statedict(epoch)
-
-            if epoch % self.print_every == 0:
-                # Sample a different region of the latent distribution to check for mode collapse
-                dynamic_latents = torch.randn(noise_shape, device=self.device)
-
-                if self.plotmode == "plt":
-                    self.eval_and_savefig_plt(epoch, fixed_latents, dynamic_latents)
-                elif self.plotmode == "bokeh":
-                    self.eval_and_savefig_bokeh(epoch, fixed_latents, dynamic_latents)
-        save(gridplot(self.bokeh_figures, ncols=2))
+        self._save_losses()
 
     @torch.no_grad()
-    def eval_and_savefig_plt(self, epoch, fixd_latent, dyn_latent):
-
-        self.generator.eval()
+    def _eval_and_savefig_plt(self, epoch, fixd_latent, dyn_latent):
         # Generate fake data using both fixed and dynamic latents
-        fake_data_fixed_latents = self.generator(fixd_latent).cpu().data
-        fake_data_dynamic_latents = self.generator(dyn_latent).cpu().data
 
-        plt.figure()
-        plt.plot(fake_data_fixed_latents.numpy()[0].T)
-        plt.savefig(f"{self.fixdir}/epoch_{epoch}.png")
+        def save_plot(data: torch.Tensor, name: str) -> None:
+            plt.figure(figsize=(10, 3), dpi=100)
+            plt.plot(data.numpy()[0].T)
+            plt.savefig(f"outputs/{name}.png")
+            plt.xlabel("Time steps")
+            plt.ylabel("Amplitude")
+            plt.close()
+
+        self.modelG.eval()
+        fake_data_fixed_latents = self.modelG(fixd_latent).cpu().data
+        fake_data_dynamic_latents = self.modelG(dyn_latent).cpu().data
+        save_plot(fake_data_fixed_latents, name=f"fix_{epoch}")
+        save_plot(fake_data_dynamic_latents, name=f"dyn_{epoch}")
+        self.modelG.train()
+
+    def _save_losses(self) -> None:
+        plt.figure(figsize=(10, 6), dpi=100)
+        plt.plot(self.losses["lossG"], label="Generator")
+        plt.plot(self.losses["lossD"], label="Critic")
+        plt.legend()
+        plt.savefig("outputs/losses.png")
         plt.close()
 
-        plt.figure()
-        plt.plot(fake_data_dynamic_latents.numpy()[0].T)
-        plt.savefig(f"{self.dyndir}/epoch_{epoch}.png")
-        plt.close()
-
-        self.generator.train()
-
-    @torch.no_grad()
-    def eval_and_savefig_bokeh(self, epoch, fixd_latent, dyn_latent):
-
-        self.generator.eval()
-        # Generate fake data using both fixed and dynamic latents
-        fake_data_fixed_latents = self.generator(fixd_latent).cpu().data
-        fake_data_dynamic_latents = self.generator(dyn_latent).cpu().data
-
-        y_fix_latents = fake_data_fixed_latents.numpy()[0].T
-        x_fix_latents = range(len(y_fix_latents))
-
-        y_dyn_latents = fake_data_dynamic_latents.numpy()[0].T
-        x_dyn_latents = range(len(y_dyn_latents))
-
-        fig = figure(
-            title=f"Epoch {epoch}",
-            x_axis_label="Time step",
-            y_axis_label="Amplitude",
-            aspect_ratio=16 / 9,
-        )
-        fig.line(x_fix_latents, y_fix_latents, legend_label="Fixed", line_width=2)
-        fig.circle(
-            x_fix_latents,
-            y_fix_latents,
-            legend_label="Fixed",
-            line_width=2,
-            fill_color="blue",
-            size=5,
-            alpha=0.75,
-        )
-        self.bokeh_figures.append(fig)
-
-        fig = figure(
-            title=f"Epoch {epoch}",
-            x_axis_label="Time steps",
-            y_axis_label="Amplitude",
-            aspect_ratio=16 / 9,
-        )
-        fig.line(
-            x_dyn_latents,
-            y_dyn_latents,
-            legend_label="Dynamic",
-            line_width=2,
-            color="orangered",
-        )
-        fig.circle(
-            x_dyn_latents,
-            y_dyn_latents,
-            legend_label="Dynamic",
-            line_width=2,
-            fill_color="orangered",
-            color="orangered",
-            size=5,
-            alpha=0.75,
-        )
-        self.bokeh_figures.append(fig)
-
-        self.generator.train()
-
-    def save_statedict(self, epoch):
-        checkdir = "checkpoints"
-        os.makedirs(checkdir, exist_ok=True)
+    def _save_statedict(self, epoch):
         torch.save(
             {
                 "epoch": epoch,
-                "d_state_dict": self.critic.state_dict(),
-                "g_state_dict": self.generator.state_dict(),
-                "d_opt_state_dict": self.optimC.state_dict(),
-                "g_opt_state_dict": self.optimG.state_dict(),
+                "modelG": self.modelG.state_dict(),
+                "modelD": self.modelD.state_dict(),
+                "optimG": self.optimG.state_dict(),
+                "optimD": self.optimC.state_dict(),
             },
-            f"{checkdir}/epoch_{epoch}.pkl",
+            f"checkpoints/epoch_{epoch}.pkl",
         )
 
-    def sample_generator(self, latent_shape):
-        latent_samples = torch.randn(latent_shape, device=self.device)
-        return self.generator(latent_samples)
 
-    def sample(self, num_samples):
-        generated_data = self.sample_generator(num_samples)
-        return generated_data.data.cpu().numpy()
-
-
-def run_training_session(config, dataset=None):
+def run_training_session(config):
     torch.manual_seed(1337)
     np.random.seed(1337)
 
     device = get_device()
 
-    SPLIT_SIZE = 50
-    SPLIT_RATIO = 1
-    DATASET_NAME = "AMP20"
+    dataset_names: List[str] = [
+        "Harmon 1",
+        "Harmon 2",
+        "Harmon 3",
+        "Harmon 4",
+        "Harmon 5",
+        "Harmon 6",
+        "Harmon 7",
+        "Harmon 8",
+        "Harmon 9",
+        "Harmon 10",
+    ]
 
-    dataset = HarmonicDataset(DATASET_NAME, SPLIT_SIZE, SPLIT_RATIO)
-    dataloader = DataLoader(
-        dataset, batch_size=config["batch_size"], num_workers=4, pin_memory=True
+    dataset_labels: Dict[str, int] = {
+        "1": 0,
+        "2": 1,
+        "3": 2,
+        "4": 3,
+        "5": 4,
+        "6": 5,
+        "7": 6,
+        "8": 7,
+        "9": 8,
+        "10": 9,
+    }
+
+    transforms = Compose([RandomRoll(p=-1.0)])
+
+    dataset = MultiHarmonicDataset(
+        names=dataset_names,
+        label_map=dataset_labels,
+        transforms=transforms,
+        save=True,
     )
 
-    seq_length = dataset.dataset.shape[1]
+    dataloader = DataLoader(
+        dataset,
+        batch_size=config["batch_size"],
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        drop_last=True,
+    )
 
-    generator = Generator(seq_length=seq_length)
-    generator.to(device)
+    params = dict(
+        z_dim=100,
+        gp_weight=10,
+        critic_iterations=5,
+        seq_length=dataset.get_sequence_length(),
+    )
 
-    critic = Critic(seq_length=seq_length)
-    critic.to(device)
+    modelG = Generator(params["seq_length"], params["z_dim"])
+    modelG.to(device)
 
-    optimG = torch.optim.RMSprop(generator.parameters(), lr=config["lr"])
-    optimC = torch.optim.RMSprop(critic.parameters(), lr=config["lr"])
+    modelD = Discriminator(params["seq_length"])
+    modelD.to(device)
 
-    plotmode = "bokeh"
+    summarize_gan(Generator, Discriminator)
 
-    trainer = Trainer(generator, critic, optimG, optimC, seq_length, plotmode=plotmode)
+    optimG = Adam(modelG.parameters(), lr=config["lr"], betas=(0.5, 0.999))
+    optimC = Adam(modelD.parameters(), lr=config["lr"], betas=(0.5, 0.999))
+
+    trainer = Trainer(modelG, modelD, optimG, optimC, params)
     trainer.train(dataloader, epochs=config["epochs"])
 
 
 if __name__ == "__main__":
 
-    NUM_TRIAL_RUNS = 4
+    # MAX_GPU = 8
+    # MAX_CPU = 16
+
+    NUM_TRIAL_RUNS = 1
     EXPERIMENT_NAME = "wgan-gp_experiment"
-    RESOURCES_PER_TRIAL = {"cpu": 1, "gpu": 4}
+    RESOURCES_PER_TRIAL = {"cpu": 2, "gpu": 1}
 
     config = {
-        "lr": tune.choice([0.00005]),
-        "epochs": tune.choice([1400]),
-        "batch_size": tune.choice([50]),
+        "lr": tune.choice([0.0002]),
+        "epochs": tune.choice([200]),
+        "batch_size": tune.grid_search([128]),
     }
 
     ray.init()
@@ -331,7 +279,7 @@ if __name__ == "__main__":
     mlflow.set_tracking_uri(cfg.URI_MODELREG_REMOTE)
 
     analysis = tune.run(
-        partial(run_training_session, dataset=None),
+        run_training_session,
         name=EXPERIMENT_NAME,
         mode="min",
         verbose=0,
@@ -347,6 +295,7 @@ if __name__ == "__main__":
                 registry_uri=cfg.URI_MODELREG_REMOTE,
                 experiment_name=EXPERIMENT_NAME,
                 save_artifact=True,
+                tags={"model_script": model_script},
             )
         ],
     )
