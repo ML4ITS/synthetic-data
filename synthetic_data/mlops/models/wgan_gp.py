@@ -23,7 +23,6 @@ class Generator(nn.Module):
             nn.BatchNorm1d(1024, 0.8),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(1024, seq_length),
-            nn.Tanh(),
         )
 
     def forward(self, sequence: Tensor) -> Tensor:
