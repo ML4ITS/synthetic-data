@@ -15,5 +15,6 @@ ray[default]==1.12.0
 mlflow
 Flask
 Flask-PyMongo
+types-requests
 torchinfo
 mypy
