@@ -24,7 +24,6 @@ class Generator(nn.Module):
             nn.BatchNorm1d(512),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(512, output_channels),
-            nn.Tanh(),
         )
 
     def forward(self, noise: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
