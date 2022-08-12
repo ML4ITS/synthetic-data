@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import mlflow
@@ -8,7 +8,7 @@ import ray
 import torch
 from ray import tune
 from ray.tune.integration.mlflow import MLflowLoggerCallback
-from torch.autograd import grad as torch_grad
+from torch.nn import Module
 from torch.optim import Adam, RMSprop
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose
@@ -18,17 +18,18 @@ from synthetic_data.common.torchutils import get_device
 from synthetic_data.mlops.datasets.multiharmonic import MultiHarmonicDataset
 from synthetic_data.mlops.models.wgan_gp import Discriminator, Generator
 from synthetic_data.mlops.models.wgan_gp import __name__ as model_script
-from synthetic_data.mlops.tools.summary import summarize_gan
+from synthetic_data.mlops.tools import summary
+from synthetic_data.mlops.tools.loss import calc_gradient_penalty
 from synthetic_data.mlops.transforms.transform import RandomRoll
 
 
 class Trainer:
     def __init__(
         self,
-        modelG: torch.nn.Module,
-        modelD: torch.nn.Module,
-        optimG: RMSprop,
-        optimC: RMSprop,
+        modelG: Module,
+        modelD: Module,
+        optimG: Adam,
+        optimC: Adam,
         params: Dict[str, Any],
     ):
         self.modelG = modelG
@@ -39,10 +40,10 @@ class Trainer:
         self.losses: Dict[str, list] = {
             "lossG": [],
             "lossD": [],
-            "gradPenalty": [],
-            "gradNorm": [],
+            "gp_loss": [],
+            "gp_norm": [],
         }
-        self.device = get_device()
+        self.device: torch.device = get_device()
         os.makedirs("checkpoints", exist_ok=True)
         os.makedirs("outputs", exist_ok=True)
 
@@ -54,15 +55,18 @@ class Trainer:
         real_logits = self.modelD(real_data)
         fake_logits = self.modelD(fake_data)
 
-        gradient_penalty = self._gradient_penalty(real_data, fake_data)
+        gp_loss, gp_norm = calc_gradient_penalty(
+            self.modelD, real_data, fake_data, self.params["gp_weight"], self.device
+        )
 
-        loss = fake_logits.mean() - real_logits.mean() + gradient_penalty
+        loss = fake_logits.mean() - real_logits.mean() + gp_loss
 
         self.optimC.zero_grad()
         loss.backward()
         self.optimC.step()
 
-        self.losses["gradPenalty"].append(gradient_penalty.data.item())
+        self.losses["gp_loss"].append(gp_loss.data.item())
+        self.losses["gp_norm"].append(gp_norm)
         self.losses["lossD"].append(loss.data.item())
 
     def _train_generator(self, data):
@@ -77,37 +81,6 @@ class Trainer:
         self.optimG.step()
         self.losses["lossG"].append(loss.data.item())
 
-    def _gradient_penalty(self, real_data, generated_data):
-        batch_size = real_data.size(0)
-
-        # Calculate interpolation
-        alpha = torch.rand(batch_size, 1, device=self.device)
-        alpha = alpha.expand_as(real_data)
-        interpolated = alpha * real_data.data + (1 - alpha) * generated_data.data
-        interpolated = interpolated.clone().detach().requires_grad_(True)
-
-        # Pass interpolated data through Critic
-        prob_interpolated = self.modelD(interpolated)
-
-        # Calculate gradients of probabilities with respect to examples
-        gradients = torch_grad(
-            outputs=prob_interpolated,
-            inputs=interpolated,
-            grad_outputs=torch.ones(prob_interpolated.size(), device=self.device),
-            create_graph=True,
-            retain_graph=True,
-        )[0]
-        # Gradients have shape (batch_size, num_channels, series length),
-        # here we flatten to take the norm per example for every batch
-        gradients = gradients.view(batch_size, -1)
-        self.losses["gradNorm"].append(gradients.norm(2, dim=1).mean().data.item())
-
-        # Derivatives of the gradient close to 0 can cause problems because of the
-        # square root, so manually calculate norm and add epsilon
-        gradients_norm = torch.sqrt(torch.sum(gradients**2, dim=1) + 1e-12)
-
-        return self.params["gp_weight"] * ((gradients_norm - 1) ** 2).mean()
-
     def _train_epoch(self, dataloader: DataLoader, epoch: int) -> None:
         for i, (data, _) in enumerate(dataloader):
             global_step = i + epoch * len(dataloader.dataset)
@@ -119,15 +92,15 @@ class Trainer:
             if global_step % self.params["critic_iterations"] == 0:
                 self._train_generator(data)
 
-            # LOG every 20th sample
-            if global_step % 20 == 0:
+            # LOG every 50th sample
+            if global_step % 50 == 0:
                 tune.report(
                     epoch=epoch,
                     global_step=global_step,
                     lossG=self.losses["lossG"][-1],
                     lossD=self.losses["lossD"][-1],
-                    grad_penality=self.losses["gradPenalty"][-1],
-                    grad_norm=self.losses["gradNorm"][-1],
+                    grad_penality=self.losses["gp_loss"][-1],
+                    grad_norm=self.losses["gp_norm"][-1],
                 )
 
     def _generate_noise(self, batch_size: int = 1) -> torch.Tensor:
@@ -250,7 +223,7 @@ def run_training_session(config):
     modelD = Discriminator(params["seq_length"])
     modelD.to(device)
 
-    summarize_gan(Generator, Discriminator)
+    summary.summarize_gan(Generator, Discriminator)
 
     optimG = Adam(modelG.parameters(), lr=config["lr"], betas=(0.5, 0.999))
     optimC = Adam(modelD.parameters(), lr=config["lr"], betas=(0.5, 0.999))
@@ -266,11 +239,11 @@ if __name__ == "__main__":
 
     NUM_TRIAL_RUNS = 1
     EXPERIMENT_NAME = "wgan-gp_experiment"
-    RESOURCES_PER_TRIAL = {"cpu": 2, "gpu": 1}
+    RESOURCES_PER_TRIAL = {"cpu": 2, "gpu": 2}
 
     config = {
         "lr": tune.choice([0.0002]),
-        "epochs": tune.choice([200]),
+        "epochs": tune.choice([20]),
         "batch_size": tune.grid_search([128]),
     }
 
