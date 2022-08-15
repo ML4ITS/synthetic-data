@@ -1,14 +1,15 @@
 from typing import Tuple
 
-import numpy as np
 import torch
+
+SequenceTuple = Tuple[torch.Tensor, torch.Tensor]
 
 
 class RandomRoll(torch.nn.Module):
-    """Randomly rolls the input sequence along the time dimension.
+    """Randomly rolls/shifts the input sequence.
 
     Args:
-        p: The probability of we should roll or not.
+        p: (float) the probability of we should roll or not.
     """
 
     def __init__(self, p: float = 0.5) -> None:
@@ -16,17 +17,15 @@ class RandomRoll(torch.nn.Module):
         self.p = p
 
     @torch.no_grad()
-    def forward(
-        self, sample: Tuple[torch.Tensor, torch.Tensor]
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, sample: SequenceTuple) -> SequenceTuple:
         """Depending on p, either rolls the sequence,
         retrives from input sample
 
         Args:
-            sample (Tuple[torch.Tensor, torch.Tensor]): sequence, label
+            sample (torch.Tensor, torch.Tensor): sequence, label
 
         Returns:
-            Tuple[torch.Tensor, torch.Tensor]: sequence, label
+            (torch.Tensor, torch.Tensor): the sequence, the label
         """
         sequence = sample[0]
         target = sample[1]
