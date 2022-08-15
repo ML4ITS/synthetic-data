@@ -12,7 +12,7 @@ RED_COLOR = "#DE5D4F"
 def vizualize_and_save_prediction(
     outdir: str,
     predictions: np.ndarray,
-    n_samples: torch.Tensor,
+    n_samples: int,
     future: int,
     epoch: int,
 ) -> None:
@@ -155,6 +155,18 @@ def preview_dataset(container, dataset: dict) -> None:
     elif data.ndim == 2:
         preview_sample = data[0]
         preview_steps = np.arange(len(preview_sample))
+    else:
+        raise ValueError(f"Invalid data dimension {data.ndim}")
+    plot_timeseries(container, preview_steps, preview_sample)
+
+
+def preview_dataset_by_sample(container, dataset: dict) -> None:
+    # prewview only a sequence of the dataset
+    container.dataframe(data=dataset_to_dataframe(dataset=dataset))
+    data = np.array(dataset["sample"])
+    if data.ndim == 1:
+        preview_sample = data
+        preview_steps = np.arange(len(data))
     else:
         raise ValueError(f"Invalid data dimension {data.ndim}")
     plot_timeseries(container, preview_steps, preview_sample)
