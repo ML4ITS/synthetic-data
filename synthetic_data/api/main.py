@@ -1,15 +1,15 @@
 import json
 from functools import lru_cache
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import mlflow
 import numpy as np
 import torch
 from bson import json_util
 from flask import Flask, jsonify, request
+from flask.wrappers import Response
 from flask_pymongo import PyMongo
 from mlflow.tracking import MlflowClient
-from requests import Response
 
 from synthetic_data.common.config import LocalConfig
 
@@ -64,6 +64,28 @@ def get_datasets():
         return jsonify({"datasets": modified_datasets})
 
 
+@app.route("/datasets/sample", methods=["GET"])
+def get_dataset_samples():
+    if request.method == "GET":
+        """returns a sample list of all the time-series in the database"""
+        limit = request.args.get("limit", None, type=int)
+
+        # retrieve the datasets without the main 'data' content,
+        # we just want parse the the sample data + meta info.
+        cursor = mongo.db.datasets.find(limit=limit, projection={"data": False})
+        datasets = list(cursor)
+
+        if len(datasets) == 0:
+            return error_response("No dataset found", 404)
+
+        dataset_samples = []
+        for dataset in datasets:
+            dataset = json_util.dumps(dataset)
+            dataset = json.loads(dataset)
+            dataset_samples.append(dataset)
+        return jsonify({"datasets": dataset_samples})
+
+
 @app.route("/dataset", methods=["GET", "POST"])
 def get_dataset():
     if request.method == "GET":
@@ -114,6 +136,7 @@ def get_models():
             )
 
 
+# "/inference/forecast" ?
 @app.route("/forecast", methods=["GET", "POST"])
 def get_forecast():
     if request.method == "POST":
@@ -138,7 +161,14 @@ def get_forecast():
             )
 
 
-def error_response(msg: str, code: int, stacktrace: Exception = None) -> Response:
+@app.route("/generations", methods=["GET", "POST"])
+def get_generations():
+    raise NotImplementedError("TODO")
+
+
+def error_response(
+    msg: str, code: int, stacktrace: Exception = None
+) -> Tuple[Response, int]:
     response = {"error": msg}
     if stacktrace is not None:
         response["stacktrace"] = str(stacktrace)
@@ -167,7 +197,7 @@ def _build_vector_data(data: list) -> torch.Tensor:
 
 
 @lru_cache(maxsize=None)
-def _load_model(model_uri: str, device: str):
+def _load_model(model_uri: str, device: str) -> Any:
     model = mlflow.pytorch.load_model(model_uri=model_uri, map_location=device)
     model.double()
     model.to(device)
@@ -177,7 +207,7 @@ def _load_model(model_uri: str, device: str):
 
 def _create_forecast_response(
     inputs: torch.Tensor,
-    outputs: np.ndarray,
+    outputs: torch.Tensor,
     future: int,
 ) -> Dict[str, List[float]]:
 
@@ -199,4 +229,4 @@ def _create_forecast_response(
 
 
 if __name__ == "__main__":
-    app.run("0.0.0.0", cfg.BACKEND_PORT, debug=True)
+    app.run("0.0.0.0", cfg.BACKEND_PORT, debug=False)
