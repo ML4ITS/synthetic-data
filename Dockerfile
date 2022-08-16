@@ -15,7 +15,7 @@ RUN pip install -U pip
 COPY requirements.txt ./
 COPY setup.py ./
 RUN pip install -e .
-
+ENV PYTHONUNBUFFERED 1
 COPY synthetic_data /synthetic_data
 COPY .env /synthetic_data/.env
 
