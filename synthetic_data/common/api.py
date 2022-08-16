@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import requests
 
 from synthetic_data.common.config import LocalConfig
@@ -42,19 +41,63 @@ def get_all_time_series_by_sample(limit: int = 100) -> list:
     return response.json()
 
 
-def get_model_meta():
+def get_registrated_models():
+    """returns a list of all the registrated model in ML Flow model registry"""
     ENDPOINT = cfg.URI_BACKEND_LOCAL + "/models"
     r = requests.get(ENDPOINT)
     return r.json()
 
 
-def get_forecast_meta(model_name, model_version, timesteps, data):
-    ENDPOINT = cfg.URI_BACKEND_LOCAL + "/forecast"
+def get_prediction(params: dict):
+    payload_type = params.get("payload_type")
+    model_name = params.get("model_name")
+    model_version = params.get("model_version")
+
+    if payload_type == "conditional generation":
+        z_dim = params.get("z_dim")
+        n_classes = params.get("n_classes")
+        return get_conditional_generation_prediction(
+            model_name, model_version, z_dim, n_classes
+        )
+    elif payload_type == "generation":
+        z_dim = params.get("z_dim")
+        return get_generation_prediction(model_name, model_version, z_dim)
+    elif payload_type == "forecast":
+        timesteps = params.get("timesteps")
+        data = params.get("data")
+        return get_forecast_prediction(model_name, model_version, timesteps, data)
+    else:
+        raise ValueError("Invalid payload type")
+
+
+def get_conditional_generation_prediction(model_name, model_version, z_dim, n_classes):
+    PAYLOAD_TYPE = "conditional generation"
+    ENDPOINT = cfg.URI_BACKEND_LOCAL + "/predict"
     payload = {
+        "payload_type": PAYLOAD_TYPE,
         "model_name": model_name,
         "model_version": model_version,
-        "timesteps": timesteps,
-        "data": data,
+        "z_dim": z_dim,
+        "n_classes": n_classes,
     }
-    r = requests.post(ENDPOINT, json=payload)
-    return r.json()
+    response = requests.post(ENDPOINT, json=payload)
+    return response.json()
+
+
+def get_generation_prediction(model_name, model_version, z_dim, n_classes):
+    PAYLOAD_TYPE = "generation"
+    raise NotImplementedError
+
+
+def get_forecast_prediction(model_name, model_version, timesteps, data):
+    PAYLOAD_TYPE = "forecast"
+    raise NotImplementedError
+    # ENDPOINT = cfg.URI_BACKEND_LOCAL + "/forecast"
+    # payload = {
+    #     "model_name": model_name,
+    #     "model_version": model_version,
+    #     "timesteps": timesteps,
+    #     "data": data,
+    # }
+    # r = requests.post(ENDPOINT, json=payload)
+    # return r.json()

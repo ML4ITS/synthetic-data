@@ -4,8 +4,17 @@ import numpy as np
 import torch
 
 
-def normalize(data: torch.Tensor, minval: int, maxval: int):
-    """Normalize data to range [minval, maxval]"""
+def normalize(data: torch.Tensor, minval: int, maxval: int) -> torch.Tensor:
+    """Normalizes data between minval and maxval
+
+    Args:
+        data (torch.Tensor): the data to normalize
+        minval (int): the minimum value
+        maxval (int): the maximum value
+
+    Returns:
+        torch.Tensor: the normalized data
+    """
     return (maxval - minval) * (
         (data - data.min()) / (data.max() - data.min())
     ) + minval
@@ -14,7 +23,14 @@ def normalize(data: torch.Tensor, minval: int, maxval: int):
 def normalize_dataset(
     dataset: Union[torch.Tensor, List[torch.Tensor]]
 ) -> Union[torch.Tensor, List[torch.Tensor]]:
-    """Normalize data(s) to range [-1, 1]"""
+    """Checks if dataset is a list or a single tensor and normalizes it accordingly
+
+    Raises:
+        TypeError: if dataset is not a list or a single tensor
+
+    Returns:
+        Union[torch.Tensor, List[torch.Tensor]]: the normalized dataset / list of datasets
+    """
     if isinstance(dataset, torch.Tensor):
         return normalize(dataset, -1, 1)
     elif isinstance(dataset, list):
@@ -41,6 +57,14 @@ def preprocess_dataset1D(
 
 
 def preprocess_dataset2D(data: np.ndarray) -> Tuple[torch.Tensor]:
+    """_summary_
+
+    Args:
+        data (np.ndarray): _description_
+
+    Returns:
+        Tuple[torch.Tensor]: _description_
+    """
     data = to_tensor(data)
     return data
 

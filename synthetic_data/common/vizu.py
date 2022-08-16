@@ -114,6 +114,44 @@ def plot_timeseries(container, time_samples: np.ndarray, samples: np.ndarray) ->
     container.bokeh_chart(fig, use_container_width=True)
 
 
+def vizualize_prediction(
+    container, prediction_arguments: dict, prediction: dict
+) -> None:
+    payload_type = prediction_arguments["payload_type"]
+    response = prediction["response"]
+    if payload_type == "forecast":
+        raise NotImplementedError
+    elif payload_type == "conditional generation":
+        n_classes = prediction_arguments["n_classes"]
+        plot_conditional_generation_prediction(container, n_classes, response)
+    elif payload_type == "generation":
+        raise NotImplementedError
+
+
+def plot_conditional_generation_prediction(
+    container, n_classes, sequences: list
+) -> None:
+    fig, axis = plt.subplots(
+        nrows=n_classes,
+        ncols=1,
+        figsize=(14, 12),
+        dpi=300,
+        sharex=True,
+        sharey=True,
+        constrained_layout=True,
+    )
+
+    for i in range(n_classes):
+        sequence = sequences[i]
+        axis[i].plot(sequence, label=f"{i+1} Hz")
+        axis[i].legend(loc="upper right")
+
+    fig.suptitle("Generated frequencies")
+    fig.supxlabel("Time steps")
+    fig.supylabel("Amplitude")
+    container.pyplot(fig)
+
+
 def plot_forecast_meta(container, meta) -> None:
     if not meta:
         return

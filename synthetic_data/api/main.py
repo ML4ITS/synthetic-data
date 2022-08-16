@@ -1,22 +1,21 @@
 import json
-from functools import lru_cache
-from typing import Any, Dict, List, Tuple, Union
 
 import mlflow
-import numpy as np
 import torch
 from bson import json_util
 from flask import Flask, jsonify, request
-from flask.wrappers import Response
 from flask_pymongo import PyMongo
 from mlflow.tracking import MlflowClient
 
+from synthetic_data.api import utils
 from synthetic_data.common.config import LocalConfig
 
 cfg = LocalConfig()
 app = Flask(__name__)
 app.config["MONGO_URI"] = cfg.URI_DATABASE
 mongo = PyMongo(app)
+
+model_registry = utils.ModelRegistry()
 
 mlflow.set_tracking_uri(cfg.URI_MODELREG_REMOTE)
 mlflow.set_registry_uri(cfg.URI_MODELREG_REMOTE)
@@ -39,7 +38,7 @@ def get_names():
         names = mongo.db.list_collection_names()
         return jsonify({"names": names})
     except Exception as e:
-        return error_response("No names found", 404)
+        return utils.error_response("No names found", 404)
 
 
 @app.route("/del", methods=["GET"])
@@ -55,7 +54,7 @@ def get_datasets():
         limit = request.args.get("limit", None, type=int)
         datasets = list(mongo.db.datasets.find(limit=limit))
         if len(datasets) == 0:
-            return error_response("No dataset found", 404)
+            return utils.error_response("No dataset found", 404)
         modified_datasets = []
         for dataset in datasets:
             dataset = json_util.dumps(dataset)
@@ -76,7 +75,7 @@ def get_dataset_samples():
         datasets = list(cursor)
 
         if len(datasets) == 0:
-            return error_response("No dataset found", 404)
+            return utils.error_response("No dataset found", 404)
 
         dataset_samples = []
         for dataset in datasets:
@@ -98,7 +97,7 @@ def get_dataset():
             dataset = json.loads(dataset)
             return jsonify({"dataset": dataset})
         except Exception as e:
-            return error_response(f"Could get dataset {name}", 500, e)
+            return utils.error_response(f"Could get dataset {name}", 500, e)
 
     elif request.method == "POST":
         """Saves a time-series to the database"""
@@ -107,7 +106,7 @@ def get_dataset():
             result = mongo.db.datasets.insert_one(dataset)
             return jsonify({"id": str(result.inserted_id)}), 201
         except Exception as e:
-            return error_response("Could not save dataset", 500, e)
+            return utils.error_response("Could not save dataset", 500, e)
 
 
 @app.route("/models", methods=["GET"])
@@ -137,95 +136,40 @@ def get_models():
 
 
 # "/inference/forecast" ?
-@app.route("/forecast", methods=["GET", "POST"])
+@app.route("/predict", methods=["GET", "POST"])
 def get_forecast():
+
+    PAYLOAD_TYPES = ["forecast", "conditional generation", "generation"]
+
     if request.method == "POST":
         payload = request.get_json()
+        payload_type = payload["payload_type"]
+
+        if payload_type not in PAYLOAD_TYPES:
+            return utils.error_response(
+                f"Payload type {payload_type} not supported", 400
+            )
+
         model_name = payload["model_name"]
         model_version = payload["model_version"]
-        timesteps = payload["timesteps"]
-        data = payload["data"]
+        model = model_registry.load_model(model_name, model_version)
 
-        try:
-            data = _preprocess_data(data)
-            model = _load_model(
-                f"models:/{model_name}/{model_version}", device=torch.device("cpu")
-            )
-            predictions = model(data, future=timesteps)
-            forecast = _create_forecast_response(data, predictions, timesteps)
-            return jsonify({"forecast": forecast})
-        except Exception as e:
-            return (
-                jsonify({"error": "Could not get forecast", "stacktrace": str(e)}),
-                500,
-            )
+        if payload_type == "forecast":
+            raise NotImplementedError
 
+        elif payload_type == "conditional generation":
+            z_dim = payload["z_dim"]
+            n_classes = payload["n_classes"]
 
-@app.route("/generations", methods=["GET", "POST"])
-def get_generations():
-    raise NotImplementedError("TODO")
+            labels = torch.arange(n_classes)
+            noise = torch.randn((n_classes, z_dim))
+            sequences = model(noise, labels)
+            response = sequences.detach().numpy().tolist()
 
+        elif payload_type == "generation":
+            raise NotImplementedError
 
-def error_response(
-    msg: str, code: int, stacktrace: Exception = None
-) -> Tuple[Response, int]:
-    response = {"error": msg}
-    if stacktrace is not None:
-        response["stacktrace"] = str(stacktrace)
-    return jsonify(response), code
-
-
-def _preprocess_data(data: Union[float, list]) -> torch.Tensor:
-    if isinstance(data, float):
-        return _build_scalar_data(data)
-    elif isinstance(data, list):
-        return _build_vector_data(data)
-    else:
-        raise ValueError("Data must be a float or a list")
-
-
-def _build_scalar_data(data: float) -> torch.Tensor:
-    if data < -1 or data > 1:
-        raise ValueError("Data must be between -1 and 1")
-    dummy = torch.from_numpy(np.array([data], np.float64))
-    dummy = dummy.unsqueeze(0)
-    return dummy
-
-
-def _build_vector_data(data: list) -> torch.Tensor:
-    raise NotImplementedError("List input is not implemented yet")
-
-
-@lru_cache(maxsize=None)
-def _load_model(model_uri: str, device: str) -> Any:
-    model = mlflow.pytorch.load_model(model_uri=model_uri, map_location=device)
-    model.double()
-    model.to(device)
-    model.eval()
-    return model
-
-
-def _create_forecast_response(
-    inputs: torch.Tensor,
-    outputs: torch.Tensor,
-    future: int,
-) -> Dict[str, List[float]]:
-
-    outputs = outputs.detach().numpy()
-    random_sample = outputs[0].reshape(1, -1)
-
-    n_samples = inputs.size(1)
-    x1 = np.arange(n_samples)
-    y1 = random_sample[0, :n_samples]
-    x2 = np.arange(n_samples, n_samples + future)
-    y2 = random_sample[0, n_samples:]
-
-    return {
-        "x1": x1.tolist(),
-        "y1": y1.tolist(),
-        "x2": x2.tolist(),
-        "y2": y2.tolist(),
-    }
+        return jsonify({"response": response})
 
 
 if __name__ == "__main__":
