@@ -161,3 +161,6 @@ cython_debug/
 
 .streamlit/secrets.toml
 out/*
+
+tmp/*
+synthetic_data/mlops/tmp/*
