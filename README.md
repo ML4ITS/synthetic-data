@@ -86,14 +86,25 @@ Subsequently, the API runs a forward pass on the data provided, and returns a pr
       docker-compose up --build -d
     ```
 
-4. (Optional) Run the following shell script to train your C-GAN/WGAN-GP model:
+### Training
+1. Create an virtual environment and install dependencies
+
+    *NOTE: local developement requires python 3.7, because of the timesynth library*
+    ```bash
+      virtualenv venv -p=python3.7
+      source venv/bin/activate
+      pip install -r requirements.txt
+    ```
+
+2. Run the following shell script to train your C-GAN/WGAN-GP model:   
+   
+    *NOTE: adjust training parameters as needed inside their respective \*.py files*
    
     ```bash
       sh synthetic_data/mlops/train_cgan.sh
       # or
       sh synthetic_data/mlops/train_gan_gp.sh
     ```
-    (NB: adjust training parameters as needed inside their respective *.py files)
 
 
 ## Evaluation
