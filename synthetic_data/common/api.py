@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 import requests
 
@@ -41,14 +43,22 @@ def get_all_time_series_by_sample(limit: int = 100) -> list:
     return response.json()
 
 
-def get_registrated_models():
+def get_registrated_model_names() -> Any:
     """returns a list of all the registrated model in ML Flow model registry"""
     ENDPOINT = cfg.URI_BACKEND_LOCAL + "/models"
     r = requests.get(ENDPOINT)
     return r.json()
 
 
-def get_prediction(params: dict):
+def get_version_by_model_names(model_name: str) -> Any:
+    """returns a list of all the registrated model in ML Flow model registry"""
+    ENDPOINT = cfg.URI_BACKEND_LOCAL + "/models/versions"
+    payload = {"model_name": model_name}
+    response = requests.post(ENDPOINT, json=payload)
+    return response.json()
+
+
+def get_prediction(params: dict) -> Any:
     payload_type = params.get("payload_type")
     model_name = params.get("model_name")
     model_version = params.get("model_version")

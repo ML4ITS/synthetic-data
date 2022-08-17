@@ -65,7 +65,7 @@ class MultiHarmonicDataset(Dataset):
         _path_to_labels = os.path.join(self.savedir, "labels.pt")
 
         if os.path.exists(_path_to_data) and os.path.exists(_path_to_labels):
-            print(f"Loaded data from {self.savedir}")
+            print(f"Loaded data locally from {self.savedir}")
             self.data = torch.load(_path_to_data)
             self.labels = torch.load(_path_to_labels)
         else:

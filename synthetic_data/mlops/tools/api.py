@@ -10,6 +10,10 @@ def load_dataset(cfg: RemoteConfig, name: str) -> np.ndarray:
     response = response.json()
     if "error" in response:
         raise FileNotFoundError(response["error"])
+    params = response["parameters"]
+    assert (
+        float(params["std_noise"]) == 0.2000
+    ), "std_noise should be 0.2000 but is {}".format(params["std_noise"])
     dataset = response["dataset"]
     dataset = np.array(dataset["data"])
     if dataset.ndim == 1:

@@ -6,6 +6,7 @@ import mlflow
 import numpy as np
 import ray
 import torch
+from mlflow.tracking import MlflowClient
 from ray import tune
 from ray.tune.integration.mlflow import MLflowLoggerCallback
 from torch.nn import Module
@@ -119,6 +120,10 @@ class Trainer:
                 self._eval_and_savefig_plt(epoch, fixed_latents, dynamic_latents)
 
         self._save_losses()
+        # Save before exit
+        if should_registrate:
+            # NB: path needs to match the ending of the model_uri in mlflow.register_model(...)
+            mlflow.pytorch.save_model(self.modelG, "model")
 
     @torch.no_grad()
     def _eval_and_savefig_plt(self, epoch, fixd_latent, dyn_latent):
@@ -236,15 +241,17 @@ if __name__ == "__main__":
 
     # MAX_GPU = 8
     # MAX_CPU = 16
+    MODEL_NAME = "WGAN-GP"
+    should_registrate = True
 
     NUM_TRIAL_RUNS = 1
     EXPERIMENT_NAME = "wgan-gp_experiment"
-    RESOURCES_PER_TRIAL = {"cpu": 2, "gpu": 2}
+    RESOURCES_PER_TRIAL = {"cpu": 1, "gpu": 1}
 
     config = {
         "lr": tune.choice([0.0002]),
-        "epochs": tune.choice([20]),
-        "batch_size": tune.grid_search([128]),
+        "epochs": tune.choice([300]),
+        "batch_size": tune.grid_search([150]),
     }
 
     ray.init()
@@ -272,3 +279,19 @@ if __name__ == "__main__":
             )
         ],
     )
+
+    if should_registrate:
+        top_trial = analysis.get_best_trial("grad_penality", "min", "last")
+
+        # Trial name depens on name of training function
+        top_trial_name = "run_training_session_" + str(top_trial.trial_id)
+        # We use the trial name to correct run
+        query = "tags.trial_name = '{}'".format(top_trial_name)
+        (top_run,) = mlflow.search_runs(
+            experiment_names=[EXPERIMENT_NAME],
+            filter_string=query,
+            max_results=1,
+            output_format="list",
+        )
+        # Finally, we use the RUN_ID to register the model
+        mlflow.register_model(f"runs:/{top_run.info.run_id}/model", MODEL_NAME)

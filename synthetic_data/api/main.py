@@ -1,4 +1,5 @@
 import json
+from pprint import pprint
 
 import mlflow
 import torch
@@ -110,27 +111,37 @@ def get_dataset():
 
 
 @app.route("/models", methods=["GET"])
-def get_models():
+def get_model_names():
     """returns a list of all the registrated model in ML Flow model registry"""
     if request.method == "GET":
         models = []
         try:
             registered_models = ml_client.list_registered_models()
             for registered_model in registered_models:
-                # We except only a single latest model from a registered_model
-                (latest_version,) = registered_model.latest_versions
-                models.append(
-                    {
-                        "name": registered_model.name,
-                        "run_id": latest_version.run_id,
-                        "version": latest_version.version,
-                        "tags": registered_model.tags,
-                    }
-                )
+                models.append({"name": registered_model.name})
             return jsonify({"models": models})
         except Exception as e:
             return (
                 jsonify({"error": "Could not get models", "stacktrace": str(e)}),
+                500,
+            )
+
+
+@app.route("/models/versions", methods=["POST"])
+def get_version_by_model_name():
+    """returns a list of all the registrated model in ML Flow model registry"""
+    if request.method == "POST":
+        payload = request.get_json()
+        model_name = payload["model_name"]
+        versions = []
+        app.logger.info(f"model_name: {model_name}")
+        try:
+            for entity in ml_client.search_model_versions(f"name='{model_name}'"):
+                versions.append({"version": int(entity.version)})
+            return jsonify({"versions": versions})
+        except Exception as e:
+            return (
+                jsonify({"error": "Could not get versions", "stacktrace": str(e)}),
                 500,
             )
 
@@ -167,7 +178,12 @@ def get_forecast():
             response = sequences.detach().numpy().tolist()
 
         elif payload_type == "generation":
-            raise NotImplementedError
+            z_dim = payload["z_dim"]
+            n_classes = 10  # TODO: make this dynamic?
+
+            noise = torch.randn((n_classes, z_dim))
+            sequences = model(noise)
+            response = sequences.detach().numpy().tolist()
 
         return jsonify({"response": response})
 

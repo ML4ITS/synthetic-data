@@ -125,7 +125,8 @@ def vizualize_prediction(
         n_classes = prediction_arguments["n_classes"]
         plot_conditional_generation_prediction(container, n_classes, response)
     elif payload_type == "generation":
-        raise NotImplementedError
+        n_classes = 10
+        plot_generation_prediction(container, n_classes, response)
 
 
 def plot_conditional_generation_prediction(
@@ -147,6 +148,27 @@ def plot_conditional_generation_prediction(
         axis[i].legend(loc="upper right")
 
     fig.suptitle("Generated frequencies")
+    fig.supxlabel("Time steps")
+    fig.supylabel("Amplitude")
+    container.pyplot(fig)
+
+
+def plot_generation_prediction(container, n_classes, sequences: list) -> None:
+    fig, axis = plt.subplots(
+        nrows=n_classes,
+        ncols=1,
+        figsize=(14, 12),
+        dpi=300,
+        sharex=True,
+        sharey=True,
+        constrained_layout=True,
+    )
+
+    for i in range(n_classes):
+        sequence = sequences[i]
+        axis[i].plot(sequence)
+
+    fig.suptitle("Random frequencies")
     fig.supxlabel("Time steps")
     fig.supylabel("Amplitude")
     container.pyplot(fig)

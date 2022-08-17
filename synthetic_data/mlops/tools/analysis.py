@@ -129,7 +129,7 @@ def sequence_to_feature(sequence: torch.Tensor) -> torch.Tensor:
        maximum and minimum values of each input sequence
 
     Args:
-      - seq: sequence
+      - seq: sequence (1x 1024)
 
     Returns:
       - features: extracted features [median, mean, standard deviation, variance, root
