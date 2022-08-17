@@ -1,0 +1,101 @@
+# Synthetic Time-Series
+Generate synthetic time-series using generative adversarial networks. This project holds an end-to-end system for generating time-series dataset with database support, training scripts running on compute clusters, post-training model registration, interactive model inferences with time-series visualization.
+
+</br>
+</br>
+
+## Architecture
+<h2 align="center">Overview</h2>
+<p align="center"><img src="docs/images/arch.jpg" alt="Home page" width="800"></p>
+
+### How It Works
+1. Create dataset in the TS Generation page. Dataset is sent to API which saves it in the Mongo DB database with the configurations parameters used.
+2. From the TS Database page, we query the API and get automatically all the datasets available from the database. We can then inspect/interact with the vizualized datasets (time-series).
+3. We're now ready to initiate a training session by submitting a train job to the Ray. In addition to training functions, we're required to set a model name and the dataset name we want.
+From the training script, we submit the job to Ray, which runs the job, saves each model after each training and finally loops through all of the trials,
+and registrates the best one to the database. As the job is running we can inspect the progression for each trial in the ML Flow.
+4. As the page loads, we fetch all registrated models from the model registry. By selecting the model we want, we can send a inference request to the API with a given model name, version and inference parameters. The request will prompt the API to load the registrated model from the ML Flow model registry (or use a locally cached version).
+Subsequently, the API runs a forward pass on the data provided, and returns a prediction response. Finally, the UI application will process the meta response and render a interactive vizualization of the prediction.
+
+
+</br>
+
+## User-Interface
+
+<h2 align="center">HOME</h2>
+<p align="center"><img src="docs/images/app1.png" alt="Home page" width="800"></p>
+
+</br>
+
+<h2 align="center">TS Generation</h2>
+<p align="center"><img src="docs/images/app2.png" alt="Home page" width="800"></p>
+
+
+</br>
+
+<h2 align="center">TS Database</h2>
+<p align="center"><img src="docs/images/app3.png" alt="Home page" width="800"></p>
+
+
+</br>
+
+<h2 align="center">TS Operations</h2>
+<p align="center"><img src="docs/images/app4.png" alt="Home page" width="800"></p>
+
+
+
+## File structure
+```bash
+...
+└── synthetic_data
+    ├── api
+    ├── app
+    │   └── pages
+    ├── common
+    └── mlops
+        ├── datasets
+        ├── models
+        ├── tools
+        └── transforms
+```
+## Usage
+1. Follow [instructions](https://docs.docker.com/engine/install/) for installing Docker Engine.
+   
+2. Create an environment file (.env) with the following credentials:
+   
+    ```bash
+    COMPUTATION_HOST=<REPLACE>
+    RAY_PORT=<REPLACE>
+
+    APPLICATION_HOST=<REPLACE>
+    MODELREG_PORT=<REPLACE>
+
+    DATABASE_NAME=<REPLACE>
+    DATABASE_USERNAME=<REPLACE>
+    DATABASE_PASSWORD=<REPLACE>
+    DATABASE_HOST=mongodb
+    DATABASE_PORT=27017
+
+    BACKEND_HOST=backend
+    BACKEND_PORT=8502
+    ```
+
+3. Run the following command to start the application:
+   
+    ```bash
+      docker-compose up --build -d
+    ```
+
+4. (Optional) Run the following shell script to train your C-GAN/WGAN-GP model:
+   
+    ```bash
+      sh synthetic_data/mlops/train_cgan.sh
+      # or
+      sh synthetic_data/mlops/train_gan_gp.sh
+    ```
+    (NB: adjust training parameters as needed inside their respective *.py files)
+
+
+## Evaluation
+
+
