@@ -104,36 +104,43 @@ def plot_timeseries(container, time_samples: np.ndarray, samples: np.ndarray) ->
         fill_color=RED_COLOR,
         size=5,
     )
-
-    # if simplify:
-    #     fig.toolbar = None
-    # fig.toolbar.active_drag = None
-    # fig.toolbar.active_scroll = None
-    # fig.toolbar.active_tap = None
-
     container.bokeh_chart(fig, use_container_width=True)
 
 
 def vizualize_prediction(
     container, prediction_arguments: dict, prediction: dict
 ) -> None:
+    """Render prediction to the container, based on the provided arguments.
+
+    Args:
+        container (DeltaGenerator): the container to render the prediction to.
+        prediction_arguments (dict): the user arguments for the prediction.
+        prediction (dict): the prediction response from the API.
+
+    Raises:
+        NotImplementedError: if the prediction_arguments["type"] is not supported.
+    """
     payload_type = prediction_arguments["payload_type"]
     response = prediction["response"]
     if payload_type == "forecast":
         raise NotImplementedError
     elif payload_type == "conditional generation":
-        n_classes = prediction_arguments["n_classes"]
-        plot_conditional_generation_prediction(container, n_classes, response)
+        plot_conditional_generation_prediction(container, response)
     elif payload_type == "generation":
-        n_classes = 10
-        plot_generation_prediction(container, n_classes, response)
+        plot_generation_prediction(container, response)
 
 
-def plot_conditional_generation_prediction(
-    container, n_classes, sequences: list
-) -> None:
+def plot_conditional_generation_prediction(container, sequences: list) -> None:
+    """Render sequences generated to the container
+
+    Args:
+        container (DeltaGenerator): the container to render the prediction to.
+        sequences (list of list, "2D-array"): the prediction response from the API
+    """
+    number_of_sequences = len(sequences)
+
     fig, axis = plt.subplots(
-        nrows=n_classes,
+        nrows=number_of_sequences,
         ncols=1,
         figsize=(14, 12),
         dpi=300,
@@ -142,7 +149,7 @@ def plot_conditional_generation_prediction(
         constrained_layout=True,
     )
 
-    for i in range(n_classes):
+    for i in range(number_of_sequences):
         sequence = sequences[i]
         axis[i].plot(sequence, label=f"{i+1} Hz")
         axis[i].legend(loc="upper right")
@@ -153,9 +160,17 @@ def plot_conditional_generation_prediction(
     container.pyplot(fig)
 
 
-def plot_generation_prediction(container, n_classes, sequences: list) -> None:
+def plot_generation_prediction(container, sequences: list) -> None:
+    """Render sequences generated to the container
+
+    Args:
+        container (DeltaGenerator): the container to render the prediction to.
+        sequences (list of list, "2D-array"): the prediction response from the API
+    """
+    number_of_sequences = len(sequences)
+
     fig, axis = plt.subplots(
-        nrows=n_classes,
+        nrows=number_of_sequences,
         ncols=1,
         figsize=(14, 12),
         dpi=300,
@@ -164,7 +179,7 @@ def plot_generation_prediction(container, n_classes, sequences: list) -> None:
         constrained_layout=True,
     )
 
-    for i in range(n_classes):
+    for i in range(number_of_sequences):
         sequence = sequences[i]
         axis[i].plot(sequence)
 
@@ -175,35 +190,41 @@ def plot_generation_prediction(container, n_classes, sequences: list) -> None:
 
 
 def plot_forecast_meta(container, meta) -> None:
-    if not meta:
-        return
+    raise NotImplementedError
 
-    x1 = meta["x1"]
-    y1 = meta["y1"]
-    x2 = meta["x2"]
-    y2 = meta["y2"]
+    # if not meta:
+    #     return
 
-    fig = figure(
-        x_axis_label="Time steps",
-        y_axis_label="Amplitude",
-        max_height=300,
-        height_policy="max",
-    )
+    # x1 = meta["x1"]
+    # y1 = meta["y1"]
+    # x2 = meta["x2"]
+    # y2 = meta["y2"]
 
-    fig.line(x1, y1, legend_label="Regular", line_width=2, line_color=RED_COLOR)
-    fig.circle(
-        x2,
-        y2,
-        legend_label="Regular",
-        line_width=2,
-        color=RED_COLOR,
-        fill_color=RED_COLOR,
-        size=5,
-    )
-    container.bokeh_chart(fig, use_container_width=True)
+    # fig = figure(
+    #     x_axis_label="Time steps",
+    #     y_axis_label="Amplitude",
+    #     max_height=300,
+    #     height_policy="max",
+    # )
+
+    # fig.line(x1, y1, legend_label="Regular", line_width=2, line_color=RED_COLOR)
+    # fig.circle(
+    #     x2,
+    #     y2,
+    #     legend_label="Regular",
+    #     line_width=2,
+    #     color=RED_COLOR,
+    #     fill_color=RED_COLOR,
+    #     size=5,
+    # )
+    # container.bokeh_chart(fig, use_container_width=True)
 
 
 def preview_dataset(container, dataset: dict) -> None:
+    raise DeprecationWarning(
+        "preview_dataset is deprecated, use preview_dataset_by_sample"
+    )
+
     # prewview only a sequence of the dataset
     container.dataframe(data=dataset_to_dataframe(dataset=dataset))
     data = np.array(dataset["data"])
@@ -221,6 +242,19 @@ def preview_dataset(container, dataset: dict) -> None:
 
 
 def preview_dataset_by_sample(container, dataset: dict) -> None:
+    """Preview a sample from the provided dataset on the container.
+    Dataset (dict) shouldn't contain the main "data" field, only the "sample".
+    This way the user can preview a sample from the dataset without having to
+    encode/decode the whole dataset.
+
+    Args:
+        container (DeltaGenerator): the container to render the prediction to.
+        dataset (dict): the dataset meta.
+
+    Raises:
+        ValueError: when dimensions of the dataset are invalid.
+    """
+
     # prewview only a sequence of the dataset
     container.dataframe(data=dataset_to_dataframe(dataset=dataset))
     data = np.array(dataset["sample"])
@@ -233,6 +267,16 @@ def preview_dataset_by_sample(container, dataset: dict) -> None:
 
 
 def dataset_to_dataframe(dataset: dict) -> pd.DataFrame:
+    """Convert the dataset tags/meta to a pandas dataframe.
+    Creates a viewable 'id' column for the dataset, as MongoDB returns a
+    auto-generated id for each document.
+
+    Args:
+        dataset (dict): the dataset meta.
+
+    Returns:
+        pd.DataFrame: the dataset meta as a pandas dataframe.
+    """
     info = pd.DataFrame(
         {
             "id": [str(dataset["_id"]["$oid"])],

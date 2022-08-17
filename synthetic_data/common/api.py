@@ -71,7 +71,8 @@ def get_prediction(params: dict) -> Any:
         )
     elif payload_type == "generation":
         z_dim = params.get("z_dim")
-        return get_generation_prediction(model_name, model_version, z_dim)
+        n_samples = params.get("n_samples")
+        return get_generation_prediction(model_name, model_version, z_dim, n_samples)
     elif payload_type == "forecast":
         timesteps = params.get("timesteps")
         data = params.get("data")
@@ -80,9 +81,12 @@ def get_prediction(params: dict) -> Any:
         raise ValueError("Invalid payload type")
 
 
-def get_conditional_generation_prediction(model_name, model_version, z_dim, n_classes):
+def get_conditional_generation_prediction(
+    model_name: str, model_version: int, z_dim: int, n_classes: int
+):
     PAYLOAD_TYPE = "conditional generation"
     ENDPOINT = cfg.URI_BACKEND_LOCAL + "/predict"
+
     payload = {
         "payload_type": PAYLOAD_TYPE,
         "model_name": model_name,
@@ -94,9 +98,21 @@ def get_conditional_generation_prediction(model_name, model_version, z_dim, n_cl
     return response.json()
 
 
-def get_generation_prediction(model_name, model_version, z_dim, n_classes):
+def get_generation_prediction(
+    model_name: str, model_version: int, z_dim: int, n_samples: int
+):
     PAYLOAD_TYPE = "generation"
-    raise NotImplementedError
+    ENDPOINT = cfg.URI_BACKEND_LOCAL + "/predict"
+
+    payload = {
+        "payload_type": PAYLOAD_TYPE,
+        "model_name": model_name,
+        "model_version": model_version,
+        "z_dim": z_dim,
+        "n_samples": n_samples,
+    }
+    response = requests.post(ENDPOINT, json=payload)
+    return response.json()
 
 
 def get_forecast_prediction(model_name, model_version, timesteps, data):

@@ -146,9 +146,8 @@ def get_version_by_model_name():
             )
 
 
-# "/inference/forecast" ?
 @app.route("/predict", methods=["GET", "POST"])
-def get_forecast():
+def get_prediction():
 
     PAYLOAD_TYPES = ["forecast", "conditional generation", "generation"]
 
@@ -171,19 +170,25 @@ def get_forecast():
         elif payload_type == "conditional generation":
             z_dim = payload["z_dim"]
             n_classes = payload["n_classes"]
-
             labels = torch.arange(n_classes)
             noise = torch.randn((n_classes, z_dim))
-            sequences = model(noise, labels)
-            response = sequences.detach().numpy().tolist()
+
+            try:
+                sequences = model(noise, labels)
+                response = sequences.detach().numpy().tolist()
+            except Exception as e:
+                return utils.error_response(f"Could not generate sequences", 500, e)
 
         elif payload_type == "generation":
             z_dim = payload["z_dim"]
-            n_classes = 10  # TODO: make this dynamic?
+            n_samples = payload["n_samples"]
+            noise = torch.randn((n_samples, z_dim))
 
-            noise = torch.randn((n_classes, z_dim))
-            sequences = model(noise)
-            response = sequences.detach().numpy().tolist()
+            try:
+                sequences = model(noise)
+                response = sequences.detach().numpy().tolist()
+            except Exception as e:
+                return utils.error_response(f"Could not generate sequences", 500, e)
 
         return jsonify({"response": response})
 
