@@ -101,7 +101,7 @@ Subsequently, the API runs a forward pass on the data provided, and returns a pr
     ```bash
       virtualenv venv -p=python3.7
       source venv/bin/activate
-      pip install -r requirements.txt
+      pip install -e .
     ```
 
 2. Run the following shell script to train your C-GAN/WGAN-GP model:   
