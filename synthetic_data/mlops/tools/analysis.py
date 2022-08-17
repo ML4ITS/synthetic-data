@@ -271,3 +271,40 @@ def sample_datasets(
     indices = np.arange(index * 1000, (index + 1) * 1000)
     datasets = data1[indices], data2[indices]
     return datasets
+
+
+def slerp(
+    value: float,
+    noise_1: torch.Tensor,
+    noise_2: torch.Tensor,
+    threshold: float = 0.9995,
+):
+    """Interpolate between two noise vectors by a given decimal value.
+
+    Args:
+        value (float): the time value between 0 and 1.
+        v0 (torch.Tensor): the first noise vector.
+        v1 (torch.Tensor): the second noise vector.
+        threshold (float, optional): stop threshold. Defaults to 0.9995.
+
+    Returns:
+        torch.Tensor: the interpolated noise vector.
+
+    rewritten version of  https://gist.github.com/karpathy/00103b0037c5aaea32fe1da1af553355
+    """
+
+    dot = torch.sum(
+        noise_1 * noise_2 / (torch.linalg.norm(noise_1) * torch.linalg.norm(noise_2))
+    )
+    if torch.abs(dot) > threshold:
+        noise = (1 - value) * noise_1 + value * noise_2
+    else:
+        theta_0 = torch.arccos(dot)
+        sin_theta_0 = torch.sin(theta_0)
+        theta_t = theta_0 * value
+        sin_theta_t = torch.sin(theta_t)
+        s0 = torch.sin(theta_0 - theta_t) / sin_theta_0
+        s1 = sin_theta_t / sin_theta_0
+        noise = s0 * noise_1 + s1 * noise_2
+
+    return noise
