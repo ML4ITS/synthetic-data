@@ -1,49 +1,24 @@
-from typing import Any, Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
-import mlflow
 import numpy as np
 import torch
 from flask import jsonify
 from flask.wrappers import Response
 
 
-class ModelRegistry:
-    def __init__(self):
-        self.models = {}
-        self.device = torch.device("cpu")
-
-    def load_model(self, model_name: str, version: int) -> Any:
-        model_key = (model_name, version)
-        if model_key not in self.models:
-            self._register_model(model_key)
-        return self.models[model_key]
-
-    def delete_model(self) -> None:
-        raise NotImplementedError()
-
-    def list_model(self) -> None:
-        raise NotImplementedError()
-
-    def _register_model(self, model_key: Tuple[str, int]) -> None:
-        print(f"Registering model {model_key}")
-        self.models[model_key] = self._prepare_model(model_key)
-
-    def _build_uri(self, model_key: Tuple[str, int]) -> str:
-        name, version = model_key
-        return f"models:/{name}/{version}"
-
-    def _prepare_model(self, model_key: Tuple[str, int]) -> None:
-        print(f"Loading model {model_key}")
-        model_uri = self._build_uri(model_key)
-        model = mlflow.pytorch.load_model(model_uri=model_uri, map_location=self.device)
-        model.to(self.device)
-        model.eval()
-        return model
-
-
 def error_response(
     msg: str, code: int, stacktrace: Exception = None
 ) -> Tuple[Response, int]:
+
+    """Helper function for creating error responses.
+
+    Args:
+        msg (str): the error message
+        code (int): the error code
+        stacktrace (Exception): the stacktrace of the error
+    Returns:
+        flask.wrappers.Response: the error response
+    """
     response = {"error": msg}
     if stacktrace is not None:
         response["stacktrace"] = str(stacktrace)
@@ -51,6 +26,8 @@ def error_response(
 
 
 def preprocess_data(data: Union[float, list]) -> torch.Tensor:
+    raise DeprecationWarning("This function is deprecated")
+
     if isinstance(data, float):
         return _build_scalar_data(data)
     elif isinstance(data, list):
@@ -60,6 +37,7 @@ def preprocess_data(data: Union[float, list]) -> torch.Tensor:
 
 
 def _build_scalar_data(data: float) -> torch.Tensor:
+    raise DeprecationWarning("This function is deprecated")
     if data < -1 or data > 1:
         raise ValueError("Data must be between -1 and 1")
     dummy = torch.from_numpy(np.array([data], np.float64))
@@ -80,7 +58,7 @@ def create_forecast_response(
     outputs: torch.Tensor,
     future: int,
 ) -> Dict[str, List[float]]:
-
+    raise DeprecationWarning("This function is deprecated")
     outputs = outputs.detach().numpy()
     random_sample = outputs[0].reshape(1, -1)
 

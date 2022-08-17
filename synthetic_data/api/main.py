@@ -1,5 +1,4 @@
 import json
-from pprint import pprint
 
 import mlflow
 import torch
@@ -8,19 +7,22 @@ from flask import Flask, jsonify, request
 from flask_pymongo import PyMongo
 from mlflow.tracking import MlflowClient
 
-from synthetic_data.api import utils
+from synthetic_data.api.model_registry import ModelRegistry
+from synthetic_data.api.utils import error_response
 from synthetic_data.common.config import LocalConfig
 
 cfg = LocalConfig()
+
 app = Flask(__name__)
 app.config["MONGO_URI"] = cfg.URI_DATABASE
-mongo = PyMongo(app)
 
-model_registry = utils.ModelRegistry()
+mongo = PyMongo(app)
 
 mlflow.set_tracking_uri(cfg.URI_MODELREG_REMOTE)
 mlflow.set_registry_uri(cfg.URI_MODELREG_REMOTE)
+
 ml_client = MlflowClient()
+model_registry = ModelRegistry()
 
 
 @app.route("/")
@@ -39,7 +41,7 @@ def get_names():
         names = mongo.db.list_collection_names()
         return jsonify({"names": names})
     except Exception as e:
-        return utils.error_response("No names found", 404)
+        return error_response("No names found", 404)
 
 
 @app.route("/del", methods=["GET"])
@@ -55,7 +57,7 @@ def get_datasets():
         limit = request.args.get("limit", None, type=int)
         datasets = list(mongo.db.datasets.find(limit=limit))
         if len(datasets) == 0:
-            return utils.error_response("No dataset found", 404)
+            return error_response("No dataset found", 404)
         modified_datasets = []
         for dataset in datasets:
             dataset = json_util.dumps(dataset)
@@ -76,7 +78,7 @@ def get_dataset_samples():
         datasets = list(cursor)
 
         if len(datasets) == 0:
-            return utils.error_response("No dataset found", 404)
+            return error_response("No dataset found", 404)
 
         dataset_samples = []
         for dataset in datasets:
@@ -98,7 +100,7 @@ def get_dataset():
             dataset = json.loads(dataset)
             return jsonify({"dataset": dataset})
         except Exception as e:
-            return utils.error_response(f"Could get dataset {name}", 500, e)
+            return error_response(f"Could get dataset {name}", 500, e)
 
     elif request.method == "POST":
         """Saves a time-series to the database"""
@@ -107,7 +109,7 @@ def get_dataset():
             result = mongo.db.datasets.insert_one(dataset)
             return jsonify({"id": str(result.inserted_id)}), 201
         except Exception as e:
-            return utils.error_response("Could not save dataset", 500, e)
+            return error_response("Could not save dataset", 500, e)
 
 
 @app.route("/models", methods=["GET"])
@@ -156,9 +158,7 @@ def get_prediction():
         payload_type = payload["payload_type"]
 
         if payload_type not in PAYLOAD_TYPES:
-            return utils.error_response(
-                f"Payload type {payload_type} not supported", 400
-            )
+            return error_response(f"Payload type {payload_type} not supported", 400)
 
         model_name = payload["model_name"]
         model_version = payload["model_version"]
@@ -177,7 +177,7 @@ def get_prediction():
                 sequences = model(noise, labels)
                 response = sequences.detach().numpy().tolist()
             except Exception as e:
-                return utils.error_response(f"Could not generate sequences", 500, e)
+                return error_response(f"Could not generate sequences", 500, e)
 
         elif payload_type == "generation":
             z_dim = payload["z_dim"]
@@ -188,7 +188,7 @@ def get_prediction():
                 sequences = model(noise)
                 response = sequences.detach().numpy().tolist()
             except Exception as e:
-                return utils.error_response(f"Could not generate sequences", 500, e)
+                return error_response(f"Could not generate sequences", 500, e)
 
         return jsonify({"response": response})
 
