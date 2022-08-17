@@ -164,5 +164,3 @@ out/*
 
 tmp/*
 synthetic_data/mlops/tmp/*
-
-*.gif
