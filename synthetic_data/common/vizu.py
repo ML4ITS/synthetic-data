@@ -121,72 +121,52 @@ def vizualize_prediction(
         NotImplementedError: if the prediction_arguments["type"] is not supported.
     """
     payload_type = prediction_arguments["payload_type"]
-    response = prediction["response"]
+    sequences = np.array(prediction["response"])
+
     if payload_type == "forecast":
         raise NotImplementedError
-    elif payload_type == "conditional generation":
-        plot_conditional_generation_prediction(container, response)
-    elif payload_type == "generation":
-        plot_generation_prediction(container, response)
+    elif payload_type in ["conditional generation", "generation"]:
+        plot_generic_generation_prediction(container, sequences)
+    else:
+        raise ValueError(f"Unsupported payload_type: {payload_type}")
 
 
-def plot_conditional_generation_prediction(container, sequences: list) -> None:
+def plot_generic_generation_prediction(container, sequences: np.ndarray) -> None:
     """Render sequences generated to the container
 
     Args:
         container (DeltaGenerator): the container to render the prediction to.
-        sequences (list of list, "2D-array"): the prediction response from the API
+        sequences (np.ndarray): the prediction response from the API
     """
-    number_of_sequences = len(sequences)
+    n_samples = sequences.shape[1]
+    time_steps = np.arange(n_samples)
 
-    fig, axis = plt.subplots(
-        nrows=number_of_sequences,
-        ncols=1,
-        figsize=(14, 12),
-        dpi=300,
-        sharex=True,
-        sharey=True,
-        constrained_layout=True,
-    )
+    for i, sequence in enumerate(sequences):
+        fig = figure(
+            x_axis_label="Time steps",
+            y_axis_label="Amplitude",
+            max_height=300,
+            height_policy="max",
+            title=f"Sequence {i+1}",
+        )
 
-    for i in range(number_of_sequences):
-        sequence = sequences[i]
-        axis[i].plot(sequence, label=f"{i+1} Hz")
-        axis[i].legend(loc="upper right")
-
-    fig.suptitle("Generated frequencies")
-    fig.supxlabel("Time steps")
-    fig.supylabel("Amplitude")
-    container.pyplot(fig)
-
-
-def plot_generation_prediction(container, sequences: list) -> None:
-    """Render sequences generated to the container
-
-    Args:
-        container (DeltaGenerator): the container to render the prediction to.
-        sequences (list of list, "2D-array"): the prediction response from the API
-    """
-    number_of_sequences = len(sequences)
-
-    fig, axis = plt.subplots(
-        nrows=number_of_sequences,
-        ncols=1,
-        figsize=(14, 12),
-        dpi=300,
-        sharex=True,
-        sharey=True,
-        constrained_layout=True,
-    )
-
-    for i in range(number_of_sequences):
-        sequence = sequences[i]
-        axis[i].plot(sequence)
-
-    fig.suptitle("Random frequencies")
-    fig.supxlabel("Time steps")
-    fig.supylabel("Amplitude")
-    container.pyplot(fig)
+        fig.line(
+            time_steps,
+            sequence,
+            legend_label=f"Sequence: {i+1}",
+            line_width=2,
+            line_color=RED_COLOR,
+        )
+        fig.circle(
+            time_steps,
+            sequence,
+            legend_label=f"Sequence: {i+1}",
+            line_width=2,
+            color=RED_COLOR,
+            fill_color=RED_COLOR,
+            size=5,
+        )
+        container.bokeh_chart(fig, use_container_width=True)
 
 
 def plot_forecast_meta(container, meta) -> None:
