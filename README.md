@@ -98,4 +98,21 @@ Subsequently, the API runs a forward pass on the data provided, and returns a pr
 
 ## Evaluation
 
+### TODO
+- [ ] Add evaluation metrics for the synthetic time-series dataset.
+- [ ] Add evaluation metrics for the synthetic time-series dataset.
+- [ ] Add visualization of the latent space interpolation for both models.
 
+
+<h2 align="center">WGAN-GP: latent space interpolation (c5, t200)</h2>
+<p align="center"><img src="docs/gifs/wgan_gp.gif" alt="Home page" width="800"></p>
+
+
+## Future suggestions
+- Create unified 'model-registration-method' for training scripts
+- Migrate script trainer to PyTorch Lightning
+- Add support for other datasets (e.g. stock prices, etc.)
+- Experiment with different types of generated time-series (e.g. gaussian process, pseudo-periodic, auto-regressive, etc.)
+- Refactor certain components of the application, and remove unnecessary/unused methods.
+- Experiment with other evaluation metrics for GANs.
+- Train and evaluate models using TSTR or TRTS.
