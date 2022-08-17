@@ -6,7 +6,7 @@ from synthetic_data.common import api
 from synthetic_data.common.vizu import vizualize_prediction
 
 
-@st.cache
+@st.cache(ttl=60)
 def fetch_model_names() -> Any:
     """Returns the json-encoded content of a response, if any.
 
@@ -16,7 +16,7 @@ def fetch_model_names() -> Any:
     return api.get_registrated_model_names()
 
 
-@st.cache
+@st.cache(ttl=60)
 def fetch_model_versions(model_name: str) -> Any:
     """Returns the json-encoded content of a response, if any.
 
