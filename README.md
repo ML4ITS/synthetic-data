@@ -61,7 +61,15 @@ Subsequently, the API runs a forward pass on the data provided, and returns a pr
 ## Usage
 1. Follow [instructions](https://docs.docker.com/engine/install/) for installing Docker Engine.
    
-2. Create an environment file (.env) with the following credentials:
+2. Install repository 
+
+    ```bash
+    git clone git@github.com:ML4ITS/synthetic-data.git
+    cd synthetic-data
+    ```
+
+
+3. Create an environment file (.env) with the following credentials:
    
     ```bash
     COMPUTATION_HOST=<REPLACE>
@@ -80,7 +88,7 @@ Subsequently, the API runs a forward pass on the data provided, and returns a pr
     BACKEND_PORT=8502
     ```
 
-3. Run the following command to start the application:
+4. Run the following command to start the application:
    
     ```bash
       docker-compose up --build -d
