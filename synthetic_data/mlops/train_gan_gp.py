@@ -113,9 +113,10 @@ class Trainer:
 
         for epoch in range(epochs):
             self._train_epoch(dataloader, epoch)
-            # self._save_statedict(epoch)
-            # Sample a new distribution to check for mode collapse
+            self._save_statedict(epoch)
+
             if epochs % 5 == 0:
+                # Sample a new distribution to check for mode collapse
                 dynamic_latents = self._generate_noise()
                 self._eval_and_savefig_plt(epoch, fixed_latents, dynamic_latents)
 
@@ -250,8 +251,8 @@ if __name__ == "__main__":
 
     config = {
         "lr": tune.choice([0.0002]),
-        "epochs": tune.choice([300]),
-        "batch_size": tune.grid_search([150]),
+        "epochs": tune.choice([1000]),
+        "batch_size": tune.choice([128]),
     }
 
     ray.init()

@@ -33,6 +33,7 @@ class Trainer:
         criterion: MSELoss,
         params: Dict[str, Any],
     ):
+        raise NotImplementedError("Out of order")
         self.model = model
         self.optim = optim
         self.criterion = criterion
@@ -146,11 +147,12 @@ class Trainer:
         )
 
 
-def run_training_session(config, dataset=None):
+def run_training_session(config):
     torch.manual_seed(1337)
     np.random.seed(1337)
-
     device = get_device()
+
+    dataset = None # TODO
 
     x_train, y_train, x_test, y_test = move_to_device(dataset, device)
 
@@ -161,75 +163,12 @@ def run_training_session(config, dataset=None):
     criterion = MSELoss()
     optim = Adam(model.parameters(), lr=config["lr"], betas=(0.5, 0.999))
     # optimizer = LBFGS(model.parameters(), lr=config["lr"])
-
-    for epoch in range(1, config["epochs"] + 1):
-        train(model, optim, criterion, x_train, y_train)
-        validation_predictions, validation_loss = test(
-            model, criterion, x_test, y_test, config["future"]
-        )
-        tune.report(validation_loss=float(validation_loss))
-        # TODO: Early stopping
-        vizualize_and_save_prediction(
-            outdir="plots",
-            predictions=validation_predictions,
-            n_samples=x_test.size(1),
-            future=config["future"],
-            epoch=epoch,
-        )
-
-    # Save on exit
-    # mlflow.pytorch.save_model(model, "model")
-
-
-# config = {
-#     "hidden_layers": tune.choice([64, 96, 128]),
-#     "lr": tune.choice(np.arange(0.55, 1, 0.1, dtype=float).round(2).tolist()),
-#     "epochs": tune.choice([2]),
-#     "future": tune.choice([500]),
-# }
+    # trainer = Trainer(model, optim, criterion, config)
+    # trainer.train(dataloader, config["epochs"])
 
 if __name__ == "__main__":
 
-    # USER INPUT
-    MODEL_NAME = "LSTM Baseline"
-    SHOULD_REGISTER = False
-
-    NUM_TRIAL_RUNS = 1
-    EXPERIMENT_NAME = "lstm_experiment"
-    RESOURCES_PER_TRIAL = {"cpu": 1, "gpu": 1}
-
-    config = {
-        "lr": tune.choice([0.0002]),
-        "epochs": tune.choice([100]),
-        "batch_size": tune.grid_search([32]),
-    }
-
-    ray.init()
-    cfg = RemoteConfig()
-    mlflow.set_tracking_uri(cfg.URI_MODELREG_REMOTE)
-
-    analysis = tune.run(
-        partial(run_training_session, dataset=None),
-        name=EXPERIMENT_NAME,
-        mode="min",
-        verbose=0,
-        num_samples=NUM_TRIAL_RUNS,
-        log_to_file=["stdout.txt", "stderr.txt"],
-        resources_per_trial=RESOURCES_PER_TRIAL,
-        sync_config=tune.SyncConfig(syncer=None),
-        local_dir="/tmp/ray_runs",
-        config=config,
-        callbacks=[
-            MLflowLoggerCallback(
-                tracking_uri=cfg.URI_MODELREG_REMOTE,
-                registry_uri=cfg.URI_MODELREG_REMOTE,
-                experiment_name=EXPERIMENT_NAME,
-                save_artifact=True,
-                tags={"model_script": model_script},
-            )
-        ],
-    )
-
-    if SHOULD_REGISTER:
-        registrator = MlflowModelRegister(EXPERIMENT_NAME)
-        registrator.register(MODEL_NAME)
+    # TODO: create working trainer class
+    # TODO: make model train on the new MultiHarmonicDataset
+    # TODO: change the training loop to use the new MultiHarmonicDataset
+    # TODO: change the optimizer to Adam (more common, easier to understand etc).

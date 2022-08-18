@@ -263,8 +263,8 @@ if __name__ == "__main__":
 
     config = {
         "lr": tune.choice([0.0002]),
-        "epochs": tune.choice([250]),
-        "batch_size": tune.choice([200]),
+        "epochs": tune.choice([300]),
+        "batch_size": tune.choice([128]),
     }
 
     # ----------------------------
