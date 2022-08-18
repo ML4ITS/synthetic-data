@@ -208,7 +208,7 @@ def get_prediction():
         model = model_registry.load_model(model_name, model_version)
 
         if payload_type == "forecast":
-            raise NotImplementedError
+            return error_response(f"Payload type {payload_type} not supported yet", 400)
 
         elif payload_type == "conditional generation":
             z_dim = payload["z_dim"]

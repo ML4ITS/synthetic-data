@@ -3,7 +3,10 @@ from typing import Any
 import streamlit as st
 
 from synthetic_data.common import api
+from synthetic_data.common.config import LocalConfig
 from synthetic_data.common.vizu import vizualize_prediction
+
+cfg = LocalConfig()
 
 
 @st.cache(ttl=60)
@@ -87,15 +90,33 @@ def run() -> None:
     container.header("Synthetic Operations")
 
     with st.sidebar:
+
         st.header("Configuration")
 
         model_names = get_model_names(container)
-        model_name = st.selectbox("Model", model_names)
+        model_name = st.selectbox(
+            label="Model",
+            options=model_names,
+            help="The trained machine learning models to use.",
+        )
 
         model_versions = get_model_versions(container, model_name)
-        model_version = st.selectbox("Version", model_versions)
+        model_version = st.selectbox(
+            label="Version",
+            options=model_versions,
+            help="The version of the trained machine learning model",
+        )
 
-        payload_type = st.selectbox("Payload type", PAYLOAD_TYPES)
+        payload_type = st.selectbox(
+            label="Payload type",
+            options=PAYLOAD_TYPES,
+            help="The payload type determines the type of the model. \
+                A 'conditional' type is meant for conditional \
+                GAN models that can generate data \
+                based on a condition (e.g. frequency). A 'generation' \
+                type is meant for normal GAN models \
+                that can generate 'some' data.",
+        )
 
         prediction_arguments = {}
         prediction_arguments["payload_type"] = payload_type
@@ -103,20 +124,40 @@ def run() -> None:
         prediction_arguments["model_version"] = model_version
 
         if payload_type == "conditional generation":
-            z_dim = st.number_input("Latent dimention", value=100)
-            n_classes = st.number_input("Number of conditions", value=10)
+            z_dim = st.number_input(
+                label="Latent dimention",
+                value=100,
+                help="The latent-space dimention of the model. \
+                    Note that this should be the exact same as the selected model was trained on.",
+            )
+            n_classes = st.number_input(
+                label="Number of conditions",
+                value=10,
+                help="The number of condition/classes/labels to use when predicting.\
+                    For example, value of 3 means that the model can predict 3 different conditions \
+                    (e.g. 1 Hz, 2 Hz and 3 Hz)",
+            )
             prediction_arguments["z_dim"] = z_dim
             prediction_arguments["n_classes"] = n_classes
 
         if payload_type == "generation":
-            z_dim = st.number_input("Latent dimention", value=100)
-            n_samples = st.number_input("Number of samples", value=10)
+            z_dim = st.number_input(
+                label="Latent dimention",
+                value=100,
+                help="The latent-space dimention of the model. \
+                    Note that this should be the exact same as the selected model was trained on.",
+            )
+            n_samples = st.number_input(
+                label="Number of samples",
+                value=10,
+                help="The number of samples to generate by the selected model",
+            )
 
             prediction_arguments["z_dim"] = z_dim
             prediction_arguments["n_samples"] = n_samples
 
         if payload_type == "forecast":
-            raise NotImplementedError("Forecast is not implemented yet.")
+            raise NotImplementedError("Forecast prediction is not implemented yet.")
 
         with st.form("Configuration"):
 
@@ -142,7 +183,10 @@ def run() -> None:
             else:
                 container.info(f"Ready for request ...")
 
-        st.json(prediction_arguments)
+        MLFLOW_REGISTRY = "Visit ML Flow Registry"
+        MLFLOW_URI_TO_MODELS = cfg.URI_MODELREG_REMOTE + "/#/models"
+        MLFLOW_MARKDOWN = f"[{MLFLOW_REGISTRY}]({MLFLOW_URI_TO_MODELS})"
+        st.markdown(MLFLOW_MARKDOWN, unsafe_allow_html=True)
 
 
 # if payload_type == "forecast":

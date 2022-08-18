@@ -21,8 +21,8 @@ def save_time_series(name: str, data: np.ndarray, params: dict) -> dict:
     """
     payload = {
         "name": name,
-        "data": data.tolist(),  # shape (X, Y)
-        "sample": data[0].tolist(),  # shape (1, Y)
+        "data": data.tolist(),  # shape (M, N)
+        "sample": data[0].tolist(),  # shape (1, N)
         "parameters": params,
     }
     ENDPOINT = cfg.URI_BACKEND_LOCAL + "/dataset"

@@ -71,10 +71,25 @@ class BackendConfig(ServerConfig):
 
 
 class LocalConfig(BackendConfig, DatabaseConfig, ModelRegistryConfig):
+    """The configuration for the local services (web app, API, database, model registry)
+
+    Args:
+        BackendConfig: The backend configuration
+        DatabaseConfig: The database configuration
+        ModelRegistryConfig: The model registry configuration
+    """
+
     pass
 
 
 class RemoteConfig(BackendConfig, ModelRegistryConfig):
+    """The configuration for the remote services (Ray ML)
+
+    Args:
+        BackendConfig: The backend configuration
+        ModelRegistryConfig: The model registry configuration
+    """
+
     pass
 
 
