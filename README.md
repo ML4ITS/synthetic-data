@@ -189,11 +189,12 @@ Both models were trained on the same harmonic dataset, consisting of 10 000 time
 
 ## Future suggestions
 - Create unified 'model-registration-method' for training scripts
-- Migrate script trainer to PyTorch Lightning
-- Add support for other datasets (e.g. stock prices, etc.)
+- Migrate model trainers to PyTorch Lightning
+- Refactor LSMT to train with the new MultiHarmonicDataset
 - Experiment with different types of generated time-series (e.g. gaussian process, pseudo-periodic, auto-regressive, etc.)
+- Experiment with other datasets (e.g. synthetic, real, etc.)
 - Refactor certain components of the application, and remove unnecessary/unused methods.
 - Experiment with other evaluation metrics for GANs.
-- Train and evaluate models using TSTR or TRTS.
+- Experiment with training / evaluating models using TSTR or TRTS.
 
 
