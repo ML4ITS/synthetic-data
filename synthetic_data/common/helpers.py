@@ -1,3 +1,7 @@
+import os
+import shutil
+import subprocess
+
 import pandas as pd
 
 
@@ -27,3 +31,25 @@ def strtobool(val: str) -> bool:
 
 def name_to_alias(name: str) -> str:
     return name.lower().replace(" ", "_")
+
+
+def make_tmpdir(tmpdir: str) -> None:
+    os.makedirs(tmpdir, exist_ok=True)
+
+
+def del_tmpdir(tmpdir: str) -> None:
+    shutil.rmtree(tmpdir)
+
+
+def create_gif_from_image_folder(
+    folder: str, filename: str, fps: int, loop: int = 0
+) -> None:
+    assert ".gif" in filename, f"Filename '{filename}' must end with .gif"
+    assert os.path.isdir(folder), f"Folder '{folder}' does not exist"
+    assert 0 <= fps <= 60, "FPS must be between 0 and 60"
+    assert 0 <= loop <= 2, "Loop must be between 0 and 2"
+
+    cmd = f"ffmpeg -f image2 -framerate {fps} -i {folder}/frame%04d.jpg -loop -{loop} -pix_fmt bgr8 {filename}"
+    subprocess.run(
+        cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
+    )
