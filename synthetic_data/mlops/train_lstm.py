@@ -152,7 +152,7 @@ def run_training_session(config):
     np.random.seed(1337)
     device = get_device()
 
-    dataset = None # TODO
+    dataset = None  # TODO
 
     x_train, y_train, x_test, y_test = move_to_device(dataset, device)
 
@@ -166,9 +166,11 @@ def run_training_session(config):
     # trainer = Trainer(model, optim, criterion, config)
     # trainer.train(dataloader, config["epochs"])
 
+
 if __name__ == "__main__":
+    pass
 
     # TODO: create working trainer class
     # TODO: make model train on the new MultiHarmonicDataset
     # TODO: change the training loop to use the new MultiHarmonicDataset
-    # TODO: change the optimizer to Adam (more common, easier to understand etc).
+    # TODO: change the optimizer to Adam (more common, easier to understand etc)
