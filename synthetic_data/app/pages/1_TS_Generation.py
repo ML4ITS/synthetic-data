@@ -47,6 +47,12 @@ class ProcessKernel(Enum):
 
 
 def get_gaussian_process_signal(**kwargs):
+    """Returns the appropriate gaussian process signal depending on the
+    selected covariance function.
+
+    Returns:
+        GaussianProcess: the Gaussian Process time series sampler
+    """
     cov_function = kwargs.get("kernel")  # selected covariance function
     if cov_function == ProcessKernel.CONSTANT.value:
         return GaussianProcess(kernel=cov_function, variance=kwargs.get("variance"))
@@ -69,6 +75,16 @@ def get_gaussian_process_signal(**kwargs):
 def get_time_samples(
     seq_length: int, keep_percentage: int, is_irregular: bool
 ) -> np.ndarray:
+    """Returns the time samples for the given sequence length and keep percentage.
+
+    Args:
+        seq_length (int): the sequence length
+        keep_percentage (int): the percentage of samples to keep
+        is_irregular (bool): whether the time samples are irregular or not
+
+    Returns:
+        np.ndarray: the time samples
+    """
     time_sampler = ts.TimeSampler(stop_time=1)  # default 1?
     if is_irregular:
         return time_sampler.sample_irregular_time(
@@ -86,6 +102,20 @@ def generate_data(
     std_noise: float,
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray, dict]:
+    """Generates the time series given all of its parameters.
+
+    Args:
+        process_type (str): the type of process to generate
+        batch_size (int): how many time series to generate
+        seq_length (int): the sequence length of each time series
+        keep_percentage (int): the percentage of samples to keep
+        irregular (bool): whether the time samples are irregular or not
+        std_noise (float): the standard deviation of the noise
+
+    Returns:
+        (np.ndarray, np.ndarray, dict): the time series, the time samples, and the parameters
+    """
+
     signal = None
 
     # default
@@ -152,7 +182,7 @@ def run() -> None:
 
         # NOTE: Generating Time-Series with more then 1 sequence is
         # only currently supported for HARMONIC
-        # I've not tested other process types yet, therefore disabled
+        # I've not tested other process types yet, therefore disabled on purpose
         batch_size = st.number_input(
             "Number of sequences",
             0,
@@ -246,7 +276,7 @@ def run() -> None:
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.EXPONENTIAL.value:
-                gamma = st.slider("gamma", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
+                gamma = st.slider("gamma", 0.0, 1.0, 1.0, 0.1)
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     batch_size=batch_size,
@@ -260,7 +290,7 @@ def run() -> None:
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.RQ.value:
-                alpha = st.slider("alpha", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
+                alpha = st.slider("alpha", 0.0, 1.0, 1.0, 0.1)
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     batch_size=batch_size,
@@ -274,8 +304,8 @@ def run() -> None:
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.LINEAR.value:
-                c = st.slider("c", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
-                offset = st.slider("offset", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
+                c = st.slider("c", 0.0, 1.0, 1.0, 0.1)
+                offset = st.slider("offset", 0.0, 1.0, 1.0, 0.1)
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     batch_size=batch_size,
@@ -290,7 +320,7 @@ def run() -> None:
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.MATERN.value:
-                nu = st.slider("nu", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
+                nu = st.slider("nu", 0.0, 1.0, 1.0, 0.1)
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     batch_size=batch_size,
@@ -304,7 +334,7 @@ def run() -> None:
                 plot_timeseries(container, time_samples, samples)
 
             if kernel == ProcessKernel.PERIODIC.value:
-                period = st.slider("period", 0.0, 1.0, 1.0, 0.1)  # TODO: check range
+                period = st.slider("period", 0.0, 1.0, 1.0, 0.1)
                 time_samples, samples, default_parameters = generate_data(
                     process_type=process_type,
                     batch_size=batch_size,
@@ -415,7 +445,10 @@ def run() -> None:
             plot_timeseries(container, time_samples, samples)
 
         def form_callback():
-            """clears the text input"""
+            """On submit, fetch the input parameters,
+            and save its corresponding time-series to the database. On success,
+            reset the form, else show an error message.
+            """
             name = st.session_state.database_name
 
             if name == "":

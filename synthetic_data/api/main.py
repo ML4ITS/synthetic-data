@@ -27,16 +27,26 @@ model_registry = ModelRegistry()
 
 @app.route("/")
 def index():
-    return jsonify({"Hello": "World!"})
+    return jsonify({"message": "no content"})
 
 
 @app.route("/ping")
 def ping():
+    """Returns a simple 'pong' response to get a simple health check up and running
+
+    Returns:
+        flask.wrappers.Response: A response object with a simple 'pong' message
+    """
     return jsonify(mongo.db.command("ping"))
 
 
 @app.route("/names", methods=["GET"])
 def get_names():
+    """Returns a list of all available model names
+
+    Returns:
+        flask.wrappers.Response: A response object with a list of all available model names
+    """
     try:
         names = mongo.db.list_collection_names()
         return jsonify({"names": names})
@@ -46,6 +56,11 @@ def get_names():
 
 @app.route("/del", methods=["GET"])
 def delete_timeseries():
+    """Deletes all timeseries from the database
+
+    Returns:
+        flask.wrappers.Response: object with the number of deleted timeseries
+    """
     info = mongo.db.datasets.delete_many({})
     return jsonify({"deleted": info.deleted_count})
 
@@ -68,12 +83,17 @@ def get_datasets():
 
 @app.route("/datasets/sample", methods=["GET"])
 def get_dataset_samples():
+    """Returens all the time-series in the database with a sample of the data
+
+    Returns:
+        flask.wrappers.Response: the response object
+    """
     if request.method == "GET":
         """returns a sample list of all the time-series in the database"""
         limit = request.args.get("limit", None, type=int)
 
         # retrieve the datasets without the main 'data' content,
-        # we just want parse the the sample data + meta info.
+        # we just want parse the 'sample' + meta.
         cursor = mongo.db.datasets.find(limit=limit, projection={"data": False})
         datasets = list(cursor)
 
@@ -90,6 +110,13 @@ def get_dataset_samples():
 
 @app.route("/dataset", methods=["GET", "POST"])
 def get_dataset():
+    """Returns all the time-series in the database with the given name,
+    or creates a new time-series with the given name if it doesn't exist yet.
+
+    Returns:
+        GET: flask.wrappers.Response: the time-series dataset with the given name
+        POST: flask.wrappers.Response: the id of the newly created time-series
+    """
     if request.method == "GET":
         name = request.args.get("name", None, type=str)
         dataset = mongo.db.datasets.find_one({"name": name})
@@ -114,7 +141,11 @@ def get_dataset():
 
 @app.route("/models", methods=["GET"])
 def get_model_names():
-    """returns a list of all the registrated model in ML Flow model registry"""
+    """Returns a list of all the registrated model in ML Flow model registry
+
+    Returns:
+        flask.wrappers.Response: list of all the registrated models
+    """
     if request.method == "GET":
         models = []
         try:
@@ -131,7 +162,11 @@ def get_model_names():
 
 @app.route("/models/versions", methods=["POST"])
 def get_version_by_model_name():
-    """returns a list of all the registrated model in ML Flow model registry"""
+    """Returns a list of all the versions of a model in ML Flow model registry given its name
+
+    Returns:
+        flask.wrappers.Response: list of all the versions of a model given its name
+    """
     if request.method == "POST":
         payload = request.get_json()
         model_name = payload["model_name"]
@@ -150,7 +185,15 @@ def get_version_by_model_name():
 
 @app.route("/predict", methods=["GET", "POST"])
 def get_prediction():
+    """Loads the input parameters, loads the given model and generates the appropiate prediction,
+    and returns it.
 
+    Raises:
+        NotImplementedError: if the payload_type is not supported
+
+    Returns:
+        flask.wrappers.Response: the generated prediction for the given input parameters
+    """
     PAYLOAD_TYPES = ["forecast", "conditional generation", "generation"]
 
     if request.method == "POST":
