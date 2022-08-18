@@ -58,6 +58,11 @@ Subsequently, the API runs a forward pass on the data provided, and returns a pr
         ├── tools
         └── transforms
 ```
+
+## Prerequisites
+- Service running [Ray ML](https://ray.readthedocs.io/en/latest/)
+- Service running [ML Flow](https://www.mlflow.org/)
+
 ## Usage
 1. Follow [instructions](https://docs.docker.com/engine/install/) for installing Docker Engine.
    
@@ -72,21 +77,47 @@ Subsequently, the API runs a forward pass on the data provided, and returns a pr
 3. Create an environment file (.env) with the following credentials:
    
     ```bash
-    COMPUTATION_HOST=<REPLACE>
+    # Hostname of service/server running Ray ML (aka. the Ray compute cluster) 
+    COMPUTATION_HOST=<REPLACE> // Service running Ray ML
+    # Port of service/server running Ray ML (aka. the Ray compute cluster) 
     RAY_PORT=<REPLACE>
 
+    # Hostname of service/server running ML Flow 
     APPLICATION_HOST=<REPLACE>
+    # Port of service/server running ML Flow 
     MODELREG_PORT=<REPLACE>
 
+    # Select the name of your database
     DATABASE_NAME=<REPLACE>
+    
+    # Protect the database with your username & password
     DATABASE_USERNAME=<REPLACE>
     DATABASE_PASSWORD=<REPLACE>
+
+    # Hostname of database (aka. the name of the container when running Docker)
     DATABASE_HOST=mongodb
     DATABASE_PORT=27017
 
+    # Hostname of service/server running the API (aka. the name of the container when running Docker)
     BACKEND_HOST=backend
     BACKEND_PORT=8502
     ```
+
+    *The following credentials are then stored in the .env file, and will be located
+    by [dotenv](https://github.com/theskumar/python-dotenv) to handle the various config classes when running the application. \
+    When interfacing with Ray Tune / ML Flow, we use underlying server configuration:*
+    ```python
+      class ServerConfig:
+
+          @property
+          def APPLICATION_HOST(self):
+              return os.getenv("APPLICATION_HOST")
+
+          @property
+          def COMPUTATION_HOST(self):
+              return os.getenv("COMPUTATION_HOST")
+    ```
+    (see [config.py](synthetic_data/common/config.py) for more details)
 
 4. Run the following command to start the application:
    
