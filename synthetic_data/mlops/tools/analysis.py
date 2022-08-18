@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -279,32 +279,91 @@ def slerp(
     noise_2: torch.Tensor,
     threshold: float = 0.9995,
 ):
-    """Interpolate between two noise vectors by a given decimal value.
+    """Interpolate between two noise vectors by a given decimal (t) value.
 
     Args:
         value (float): the time value between 0 and 1.
-        v0 (torch.Tensor): the first noise vector.
-        v1 (torch.Tensor): the second noise vector.
+        noise_1 (torch.Tensor): the first noise vector.
+        noise_2 (torch.Tensor): the second noise vector.
         threshold (float, optional): stop threshold. Defaults to 0.9995.
 
     Returns:
         torch.Tensor: the interpolated noise vector.
 
-    rewritten version of  https://gist.github.com/karpathy/00103b0037c5aaea32fe1da1af553355
     """
 
-    dot = torch.sum(
+    dot = _calc_dot(noise_1, noise_2)
+
+    if torch.abs(dot) > threshold:
+        noise = _lerp(value, noise_1, noise_2)
+    else:
+        noise = _slerp(value, noise_1, noise_2, dot)
+    return noise
+
+
+def _slerp(t, p0, p1, dotp):
+    """Spherical linear interpolation between two vectors.
+
+    Args:
+        t (float): the time value between 0 and 1.
+        p0 (torch.Tensor): the first noise vector.
+        p1 (torch.Tensor): the second noise vector.
+        dotp (torch.Tensor): some dot product.
+
+    Returns:
+        torch.Tensor: the interpolated noise vector.
+
+    refactor version of  https://gist.github.com/karpathy/00103b0037c5aaea32fe1da1af553355
+    """
+    theta_0 = torch.arccos(dotp)
+    sin_theta_0 = torch.sin(theta_0)
+    theta_t = theta_0 * t
+    sin_theta_t = torch.sin(theta_t)
+    s0 = torch.sin(theta_0 - theta_t) / sin_theta_0
+    s1 = sin_theta_t / sin_theta_0
+    noise = s0 * p0 + s1 * p1
+    return noise
+
+
+def _lerp(t, p0, p1):
+    """Linear interpolation between two vectors.
+
+    Args:
+        t (float): the time value between 0 and 1.
+        p0 (torch.Tensor): the first noise vector.
+        p1 (torch.Tensor): the second noise vector.
+
+    Returns:
+        torch.Tensor: the interpolated noise vector.
+    """
+    noise = (1 - t) * p0 + t * p1
+    return noise
+
+
+def _calc_dot(noise_1: torch.Tensor, noise_2: torch.Tensor):
+    return torch.sum(
         noise_1 * noise_2 / (torch.linalg.norm(noise_1) * torch.linalg.norm(noise_2))
     )
-    if torch.abs(dot) > threshold:
-        noise = (1 - value) * noise_1 + value * noise_2
-    else:
-        theta_0 = torch.arccos(dot)
-        sin_theta_0 = torch.sin(theta_0)
-        theta_t = theta_0 * value
-        sin_theta_t = torch.sin(theta_t)
-        s0 = torch.sin(theta_0 - theta_t) / sin_theta_0
-        s1 = sin_theta_t / sin_theta_0
-        noise = s0 * noise_1 + s1 * noise_2
 
+
+def create_embedded_noise(
+    embedder: torch.nn.Module, fixed_noise: torch.Tensor, label: str
+) -> torch.Tensor:
+    """Create embedded noise from a given label using the embedder
+    from the conditional GAN model.
+
+    NB: should be equal to architecture used in the conditional GAN model class
+    (e.g. see ../models/cgan.py)
+
+    Args:
+        embedder (torch.nn.Module): the embedder from the trained Conditional GAN model.
+        fixed_noise (torch.Tensor): the fixed noise vector.
+        label (str): The first frequency.
+
+    Returns:
+        torch.Tensor: the embedded noise vector.
+    """
+    label = torch.tensor(label).to(int).unsqueeze(0)
+    label_embedding = embedder(label)
+    noise = torch.cat((label_embedding, fixed_noise), -1)
     return noise
