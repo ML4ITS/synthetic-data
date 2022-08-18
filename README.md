@@ -148,15 +148,29 @@ Subsequently, the API runs a forward pass on the data provided, and returns a pr
 
 ## Evaluation
 
-### TODO
-- [ ] Add evaluation metrics for the synthetic time-series dataset.
-- [ ] Add evaluation metrics for the synthetic time-series dataset.
-- [ ] Add visualization of the latent space interpolation for both models.
+Opposed to deep learning such as object detectors, GANs doesn't relly have a direct way of measuring performance so straight forward. Where object detectors could rely on intersection over union as simple and easy evaluation metric for measuring bounding boxes, GAN models are more difficult to guide and interpret in terms of training and performance.
+
+Commonly, GAN models are used for image generation which is a task that is not directly related to time-series generation. For image generation, popular evaluation metrics such as Inception Score and Fréchet Inception Distance has been used to evaluate the performance of GAN models. Both of these metrics relies on a pre-trained Inception -model (developed for 2D -domain). This leaves us with the challenge of evaluating the performance of GAN models in terms of time-series generation, as we're working with 1D -domain.
+
+## t-SNE and PCA
+Followin performance indications and visualizations are based on two models: the WGAN-GP model and the C-GAN model.
+Both were trained on the same datasets. WGAN-GP model was trained using a learning rate of 0.0002, batch size of 128 and a total of 1000 epochs (or 9990050 global steps). C-GAN model was trained using a learning rate of 0.0002, batch size of 128 and a total of 300 epochs (or 3000050 global steps). 
 
 
-<h2 align="center">WGAN-GP: latent space interpolation (c5, t200)</h2>
+
+
+## Latent-space exploration
+To investigate how the models generalize as their presented to give various laten space inputs, we can by interpolation - change the latent space input to a range of values. The examples below shows output sequences based on a given latent space from 10 different distributions with 200 time steps between each one, following a spherical linear interpolation.
+
+Both models were trained on the same harmonic dataset, consisting of 10 000 time series even distributed between 1-10 Hz. Using conditions/labels, we can manipulate the latent space to make the generator output desired frequencies. 
+
+<h2 align="center">WGAN-GP: latent space interpolation (slerp)</h2>
 <p align="center"><img src="docs/gifs/wgan_gp.gif" alt="Home page" width="800"></p>
 
+</br>
+
+<h2 align="center">C-GAN: latent space interpolation (slerp)</h2>
+<p align="center"><img src="docs/gifs/cgan.gif" alt="Home page" width="800"></p>
 
 ## Future suggestions
 - Create unified 'model-registration-method' for training scripts
