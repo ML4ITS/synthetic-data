@@ -40,7 +40,7 @@ Subsequently, the API runs a forward pass on the data provided, and returns a pr
 </br>
 
 <h2 align="center">TS Operations</h2>
-<p align="center"><img src="docs/images/app4.png" alt="Home page" width="800"></p>
+<p align="center"><img src="docs/images/app5.png" alt="Home page" width="800"></p>
 
 
 
