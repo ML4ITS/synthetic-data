@@ -1,5 +1,5 @@
 """
-Conditional GAN implementation
+Conditional GAN implementation refactored to work for 1D data.
 
 inspired by https://github.com/eriklindernoren/PyTorch-GAN
 """

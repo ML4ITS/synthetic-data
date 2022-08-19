@@ -4,9 +4,12 @@ from synthetic_data.common.torchutils import get_device
 
 
 class LSTM(torch.nn.Module):
-    """simple LSTM architecture"""
+    """Simple LSTM architecture
 
-    def __init__(self, hidden_layers: int = 64):
+    inspired by https://github.com/pytorch/examples
+    """
+
+    def __init__(self, hidden_layers: int = 64) -> None:
         super().__init__()
         self.hidden_layers = hidden_layers
         self.lstm1 = torch.nn.LSTMCell(1, self.hidden_layers)
@@ -14,7 +17,7 @@ class LSTM(torch.nn.Module):
         self.linear = torch.nn.Linear(self.hidden_layers, 1)
         self.device = get_device()
 
-    def forward(self, x_train: torch.Tensor, future: int = 0):
+    def forward(self, x_train: torch.Tensor, future: int = 0) -> torch.Tensor:
         outputs = []
         h_t = torch.zeros(
             x_train.size(0),

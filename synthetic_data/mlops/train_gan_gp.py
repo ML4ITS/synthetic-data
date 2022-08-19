@@ -240,10 +240,8 @@ def run_training_session(config):
 
 if __name__ == "__main__":
 
-    # MAX_GPU = 8
-    # MAX_CPU = 16
     MODEL_NAME = "WGAN-GP"
-    should_registrate = True
+    should_registrate = False
 
     NUM_TRIAL_RUNS = 1
     EXPERIMENT_NAME = "wgan-gp_experiment"
@@ -282,6 +280,10 @@ if __name__ == "__main__":
     )
 
     if should_registrate:
+        """This section is for registering the a single model in a single trial with ML FLow.
+        This is NOT a good practice for large experiments, as it will register the model in every trial.
+        TODO: This should be refactored to a general solution.
+        """
         top_trial = analysis.get_best_trial("grad_penality", "min", "last")
 
         # Trial name depens on name of training function

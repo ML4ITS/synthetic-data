@@ -253,9 +253,9 @@ def run_training_session(config, should_registrate=None):
 
 if __name__ == "__main__":
 
-    # CHANGE
+    # <SET YOUR CONFIG HERE>
     MODEL_NAME = "C-GAN"
-    should_registrate = True
+    should_registrate = False
 
     NUM_TRIAL_RUNS = 1
     EXPERIMENT_NAME = "cgan_experiment"
@@ -267,7 +267,6 @@ if __name__ == "__main__":
         "batch_size": tune.choice([128]),
     }
 
-    # ----------------------------
     ray.init()
     cfg = RemoteConfig()
     mlflow.set_tracking_uri(cfg.URI_MODELREG_REMOTE)
@@ -296,6 +295,10 @@ if __name__ == "__main__":
     )
 
     if should_registrate:
+        """This section is for registering the a single model in a single trial with ML FLow.
+        This is NOT a good practice for large experiments, as it will register the model in every trial.
+        TODO: This should be refactored to a general solution.
+        """
         top_trial = analysis.get_best_trial("lossG", "min", "last")
 
         # Trial name depens on name of training function

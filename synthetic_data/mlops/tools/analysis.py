@@ -127,7 +127,21 @@ def calculate_pca(
     original_data: torch.Tensor,
     generated_data: torch.Tensor,
     percent: float = 0.1,
-):
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Calculate PCA of original and generated data, and returns them as numpy arrays.
+
+    Args:
+        original_data (torch.Tensor): original_data
+        generated_data (torch.Tensor): generated data
+        percent (float, optional): percentage size of the total data. Defaults to 0.1.
+
+    Raises:
+        ValueError: raises error on unsupported analysis_type
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: the PCA of original and generated data
+    refactored version of https://github.com/jsyoon0823/TimeGAN
+    """
     max_samples = len(original_data)
     n_samples = int(max_samples * percent)
     idx = np.random.permutation(max_samples)[:n_samples]

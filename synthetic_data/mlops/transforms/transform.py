@@ -8,6 +8,9 @@ SequenceTuple = Tuple[torch.Tensor, torch.Tensor]
 class RandomRoll(torch.nn.Module):
     """Randomly rolls/shifts the input sequence.
 
+    For example: setting p = -1, will always shift the sequence.
+    For example: setting p = 0.5, will randomly shift the sequence with 50% probability.
+
     Args:
         p: (float) the probability of we should roll or not.
     """

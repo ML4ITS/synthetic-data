@@ -5,6 +5,18 @@ from synthetic_data.common.config import RemoteConfig
 
 
 def load_dataset(cfg: RemoteConfig, name: str) -> np.ndarray:
+    """Loads a dataset from the remote server.
+
+    Args:
+        cfg (RemoteConfig): the remote config
+        name (str): the name of the dataset to load
+
+    Raises:
+        FileNotFoundError: if the dataset is not found on the server
+
+    Returns:
+        np.ndarray: the dataset
+    """
     ENDPOINT = cfg.URI_BACKEND_REMOTE + "/dataset"
     response = requests.get(ENDPOINT, params={"name": name})
     response = response.json()

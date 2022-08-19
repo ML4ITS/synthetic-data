@@ -44,6 +44,27 @@ def del_tmpdir(tmpdir: str) -> None:
 def create_gif_from_image_folder(
     folder: str, filename: str, fps: int, loop: int = 0
 ) -> None:
+    """Create a gif from a folder of images.
+
+    NOTE: %04d should match the total number of expected image range
+    Example:
+          %03d will zero padded to 3 digits, so (0-999)
+          %04d will zero padded to 4 digits, so (0-9999)
+          %05d will zero padded to 5 digits, so (0-99999)
+
+
+
+    Args:
+        folder (str): Folder containing images.
+        filename (str): Name of the gif file.
+        fps (int): Frames per second.
+        loop (int, optional): loop count. Defaults to 0.
+            if loop is 0, the gif will loop forever.
+            if loop is 1, the gif will loop once.
+            if loop is 2, the gif will loop twice.
+
+    """
+
     assert ".gif" in filename, f"Filename '{filename}' must end with .gif"
     assert os.path.isdir(folder), f"Folder '{folder}' does not exist"
     assert 0 <= fps <= 60, "FPS must be between 0 and 60"

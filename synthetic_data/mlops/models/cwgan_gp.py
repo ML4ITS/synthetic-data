@@ -1,5 +1,11 @@
 """
+
+NOTE: Experimental code.
+
 Conditional Wasserstein GAN implementation (see arch in wgan_gp.py)
+
+Not really tested, but more of an idea. Condtional Wasserstein GAN implementation 
+should work, haven't got time to test it properly.
 
 """
 

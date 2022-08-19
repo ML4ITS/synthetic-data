@@ -40,7 +40,7 @@ class MultiHarmonicDataset(Dataset):
 
     _name = "MultiHarmonicDataset"
 
-    _COMPUTE_FOLDER = "/data/summer_internship22/datasets"
+    _COMPUTE_FOLDER = None  # REPLACE ME WITH A FOLDER WHERE YOU WANT TO SAVE THE DATA ON YOUR COMPUTE SERVER
     _path_to_dataset = os.path.join(_COMPUTE_FOLDER, _name)
 
     def __init__(
@@ -55,6 +55,9 @@ class MultiHarmonicDataset(Dataset):
         self.names = names
         self.label_map = label_map
         self.transforms = transforms
+
+        if self._COMPUTE_FOLDER is None:
+            raise ValueError("_COMPUTE_FOLDER is not set properly")
 
         if local_dir is not None:
             self.savedir = os.path.join(local_dir, self._name)

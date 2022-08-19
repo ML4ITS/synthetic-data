@@ -212,10 +212,13 @@ Both models were trained on the same multi-harmonic dataset, consisting of 10 00
 - Create unified 'model-registration-method' for training scripts
 - Migrate model trainers to PyTorch Lightning
 - Refactor LSMT to train with the new MultiHarmonicDataset
-- Experiment with different types of generated time-series (e.g. gaussian process, pseudo-periodic, auto-regressive, etc.)
-- Experiment with other datasets (e.g. synthetic, real, etc.)
-- Refactor certain components of the application, and remove unnecessary/unused methods.
-- Experiment with other evaluation metrics for GANs.
+- Implementing IS and FID (using some kinda of 1-D classifier (e.g Incepetion v3 model but for 1-D?)
 - Experiment with training / evaluating models using TSTR or TRTS.
+- Experiment with other datasets (e.g. synthetic, real, etc.)
+- Experiment with other evaluation metrics for GANs.
+- Experiment with subtracting some gaussian, and looking at the residuals. 
+- Experiment with other evaluation metrics for GANs.
+- Refactor certain components of the application, and remove unnecessary/unused methods.
+- Experiment with different types of generated time-series (e.g. gaussian process, pseudo-periodic, auto-regressive, etc.)
 
 

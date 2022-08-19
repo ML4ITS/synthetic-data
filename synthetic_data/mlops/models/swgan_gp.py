@@ -1,5 +1,10 @@
 """
+
+NOTE: Experimental code.
+
 Spectral Normalized- Wasserstein GAN implementation (assumed to be used with Gradient Penalty)
+
+Not sure if spectral normalization should be used in conjunction with Gradient Penalty.
 
 inspiration from https://github.com/mirkosavasta/GANetano
 """

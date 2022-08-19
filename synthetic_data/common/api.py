@@ -179,15 +179,5 @@ def get_generation_prediction(
     return response.json()
 
 
-def get_forecast_prediction(model_name, model_version, timesteps, data):
-    PAYLOAD_TYPE = "forecast"
+def get_forecast_prediction():
     raise NotImplementedError
-    # ENDPOINT = cfg.URI_BACKEND_LOCAL + "/forecast"
-    # payload = {
-    #     "model_name": model_name,
-    #     "model_version": model_version,
-    #     "timesteps": timesteps,
-    #     "data": data,
-    # }
-    # r = requests.post(ENDPOINT, json=payload)
-    # return r.json()
