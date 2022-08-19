@@ -123,6 +123,50 @@ def visualization(
         raise ValueError(f"Invalid analysis type: {analysis_type}")
 
 
+def calculate_pca(
+    original_data: torch.Tensor,
+    generated_data: torch.Tensor,
+    percent: float = 0.1,
+):
+    max_samples = len(original_data)
+    n_samples = int(max_samples * percent)
+    idx = np.random.permutation(max_samples)[:n_samples]
+
+    # convert to numpy array, and extract given indices
+    original_data = np.asarray(original_data)[idx]
+    generated_data = np.asarray(generated_data)[idx]
+
+    _, seq_len, _ = original_data.shape
+
+    for i in range(n_samples):
+        if i == 0:
+            prep_data = np.reshape(np.mean(original_data[0, :, :], 1), [1, seq_len])
+            prep_data_hat = np.reshape(
+                np.mean(generated_data[0, :, :], 1), [1, seq_len]
+            )
+        else:
+            prep_data = np.concatenate(
+                (
+                    prep_data,
+                    np.reshape(np.mean(original_data[i, :, :], 1), [1, seq_len]),
+                )
+            )
+            prep_data_hat = np.concatenate(
+                (
+                    prep_data_hat,
+                    np.reshape(np.mean(generated_data[i, :, :], 1), [1, seq_len]),
+                )
+            )
+
+    # PCA Analysis
+    pca = PCA(n_components=2)
+    pca.fit(prep_data)
+    pca_results = pca.transform(prep_data)
+    pca_hat_results = pca.transform(prep_data_hat)
+
+    return pca_results, pca_hat_results
+
+
 def sequence_to_feature(sequence: torch.Tensor) -> torch.Tensor:
     """Extract meaningful features from sequence, such as median, mean,
        standard deviation, variance, root mean square,

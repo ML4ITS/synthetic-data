@@ -173,26 +173,26 @@ Both were trained on the same datasets. WGAN-GP model was trained using a learni
 
 #### ---
 
-Opposed to deep learning such as object detectors, GANs doesn't relly have a direct way of measuring performance so straight forward. Where object detectors could rely on intersection over union as simple and easy evaluation metric for measuring bounding boxes, GAN models are more difficult to guide and interpret in terms of training and performance.
+Opposed to deep learning such as object detectors, GANs doesn't relly have a direct way of measuring performance so straight forward. Where object detectors could rely on intersection over union as simple and easy evaluation metric for measuring bounding box accuracy, GAN models are muhc more difficult to guide and interpret in terms of training and evaluation.
 
 Commonly, GAN models are used for image generation which is a task that is not directly related to time-series generation. For image generation, popular evaluation metrics such as Inception Score and Fréchet Inception Distance has been used to evaluate the performance of GAN models. Both of these metrics relies on a pre-trained Inception -model (developed for 2D -domain). This leaves us with the challenge of evaluating the performance of GAN models in terms of time-series generation, as we're working with 1D -domain.
 
 #### ---
-Efforts has been made to evaluate the performance of GAN models in terms of time-series generation. The [analysis.ipynb](https://github.com/ML4ITS/synthetic-data/blob/main/synthetic_data/mlops/analysis.ipynb) notebooks shows various experiments and results. By looking at a few of them, we can evaluate them visually.
+Efforts has been made to evaluate the performance of GAN models in terms of time-series generation. The [analysis.ipynb](https://github.com/ML4ITS/synthetic-data/blob/main/synthetic_data/mlops/analysis.ipynb) notebooks shows various experiments and evaluations such as average cosine similarity scoring, t-SNE, PCA and latent-space interpolation. By looking at a few of them, we can evaluate them visually.
 
 The most straight forward way to evaluate the performance visually is to generate (e.g. 10 samples) and compare them equally to the real time-series data.
 
 <h2 align="center">WGAN-GP: Randomly sampled original data vs. Random generated data</h2>
-<p align="center"><img src="docs/evals/generations_wgan.png" alt="Home page" width="600"></p>
+<p align="center"><img src="docs/evals/synth_wgangp.png" alt="Home page" width="600"></p>
 
 <h2 align="center">C-GAN: Sequentially sampled original data vs. Conditionally generated data</h2>
-<p align="center"><img src="docs/evals/generations_cgan.png" alt="Home page" width="600"></p>
+<p align="center"><img src="docs/evals/synth_cgan.png" alt="Home page" width="600"></p>
 
 ## t-SNE and PCA
 T-SNE and PCA are two slightly more uncommon ways of evaluating performance, but they could help discovery insights by displaying clusters visually. For instance, using PCA, we sample the original and generated data from purely using the 10 Hz condition.
 
-<h2 align="center">C-GAN: Condition on 10 Hz</h2>
-<p align="center"><img src="docs/evals/pca_10hz.png" alt="Home page" width="600"></p>
+<h2 align="center">C-GAN: Condition on 1-10 Hz</h2>
+<p align="center"><img src="docs/evals/class_pca.png" alt="Home page" width="600"></p>
 --
 
 ## Latent-space exploration
