@@ -170,7 +170,7 @@ def generate_data(
 
 def run() -> None:
     container = st.container()
-    container.header("Generate Time-Series")
+    container.header("Create your time-series dataset")
 
     with st.sidebar:
         st.sidebar.header("Configuration")

@@ -87,7 +87,7 @@ def run() -> None:
     PAYLOAD_TYPES = ["conditional generation", "generation", "forecast"]
 
     container = st.container()
-    container.header("Synthetic Operations")
+    container.header("Synthetic Generation")
 
     with st.sidebar:
 
