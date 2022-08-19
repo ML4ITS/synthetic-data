@@ -6,7 +6,12 @@ Generate synthetic time-series using generative adversarial networks. This proje
 
 ## Architecture
 <h2 align="center">Overview</h2>
-<p align="center"><img src="docs/images/arch.jpg" alt="Home page" width="800"></p>
+<p align="center"><img src="docs/images/comp.jpg" alt="Home page" width="800"></p>
+
+(Click [here](https://github.com/ML4ITS/synthetic-data/blob/main/docs/images/arch.jpg) to view a more detailed architecture diagram)
+
+</br>
+</br>
 
 ### How It Works
 1. Create dataset in the TS Generation page. Dataset is sent to API which saves it in the Mongo DB database with the configurations parameters used.
