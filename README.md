@@ -189,7 +189,7 @@ The most straight forward way to evaluate the performance visually is to generat
 <p align="center"><img src="docs/evals/synth_cgan.png" alt="Home page" width="600"></p>
 
 ## t-SNE and PCA
-T-SNE and PCA are two slightly more uncommon ways of evaluating performance, but they could help discovery insights by displaying clusters visually. For instance, using PCA, we sample the original and generated data from purely using the 10 Hz condition.
+t-SNE and PCA are two slightly more uncommon ways of evaluating performance, but they could help discovery insights by displaying clusters visually. For instance, using PCA, we can sample the original and generated data per class, cluster them in pairs and vizualize the distributions as seen below.
 
 <h2 align="center">C-GAN: Condition on 1-10 Hz</h2>
 <p align="center"><img src="docs/evals/class_pca.png" alt="Home page" width="600"></p>
