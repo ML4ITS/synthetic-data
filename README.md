@@ -173,9 +173,9 @@ Both were trained on the same datasets. WGAN-GP model was trained using a learni
 
 #### ---
 
-Opposed to deep learning such as object detectors, GANs doesn't relly have a direct way of measuring performance so straight forward. Where object detectors could rely on intersection over union as simple and easy evaluation metric for measuring bounding box accuracy, GAN models are muhc more difficult to guide and interpret in terms of training and evaluation.
+In the space of deep learning, GANs opposed to e.g. object detectors, doesn't really have a direct way of measuring performance straight forward. Where object detectors could rely on intersection over union as simple and easy evaluation metric for measuring bounding box accuracy, GAN models are much more difficult to guide and interpret in terms of training and evaluation.
 
-Commonly, GAN models are used for image generation which is a task that is not directly related to time-series generation. For image generation, popular evaluation metrics such as Inception Score and Fréchet Inception Distance has been used to evaluate the performance of GAN models. Both of these metrics relies on a pre-trained Inception -model (developed for 2D -domain). This leaves us with the challenge of evaluating the performance of GAN models in terms of time-series generation, as we're working with 1D -domain.
+Commonly, GAN models are used for image generation which is a task that is not directly related to time-series generation. For image generation, popular evaluation metrics such as Inception Score and Fréchet Inception Distance has been used to evaluate the performance of GAN models. Both of these metrics relies on a pre-trained image classifier (e.g. Inception-v3) developed for 2D -domain. This leaves us with the challenge of evaluating the performance of GAN models in terms of time-series generation, as we're working with 1D -domain.
 
 #### ---
 Efforts has been made to evaluate the performance of GAN models in terms of time-series generation. The [analysis.ipynb](https://github.com/ML4ITS/synthetic-data/blob/main/synthetic_data/mlops/analysis.ipynb) notebooks shows various experiments and evaluations such as average cosine similarity scoring, t-SNE, PCA and latent-space interpolation. By looking at a few of them, we can evaluate them visually.
