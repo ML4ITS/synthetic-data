@@ -29,40 +29,55 @@ Subsequently, the API runs a forward pass on the data provided, and returns a pr
 ## User-Interface
 
 <h2 align="center">HOME</h2>
-<p align="center"><img src="docs/images/app1.png" alt="Home page" width="800"></p>
+<p align="center"><img src="docs/images/ui1.png" alt="Home page" width="800"></p>
 
 </br>
 
 <h2 align="center">TS Generation</h2>
-<p align="center"><img src="docs/images/app2.png" alt="Home page" width="800"></p>
+<p align="center"><img src="docs/images/ui2.png" alt="Home page" width="800"></p>
 
 
 </br>
 
 <h2 align="center">TS Database</h2>
-<p align="center"><img src="docs/images/app3.png" alt="Home page" width="800"></p>
+<p align="center"><img src="docs/images/ui3.png" alt="Home page" width="800"></p>
 
 
 </br>
 
 <h2 align="center">TS Operations</h2>
-<p align="center"><img src="docs/images/app5.png" alt="Home page" width="800"></p>
+<p align="center"><img src="docs/images/ui4.png" alt="Home page" width="800"></p>
 
 
 
 ## File structure
 ```bash
-...
+.
+├── docker-compose.yml
+├── Dockerfile
+├── pyproject.toml
+├── README.md
+├── setup.py
 └── synthetic_data
     ├── api
+    │   └── *.py
     ├── app
+    │   ├── *.py
     │   └── pages
+    │       └── *.py
     ├── common
+    │   ├── *.py
     └── mlops
         ├── datasets
+        │   └── *.py
         ├── models
+        │   └── *.py
         ├── tools
+        │   └── *.py
+        ├── train_*.py
+        ├── train_*.sh
         └── transforms
+            └── *.py
 ```
 
 ## Prerequisites
