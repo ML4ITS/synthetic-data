@@ -1,16 +1,17 @@
-# Synthetic Time-Series
+<h1 align="center">Synthetic Time-Series</h1>
+
 Generate synthetic time-series using generative adversarial networks. This project holds an end-to-end system for generating time-series dataset with database support, training scripts running on compute clusters, post-training model registration, interactive model inferences with time-series visualization.
 
 </br>
 </br>
 
-## Architecture
-<h2 align="center">Overview</h2>
+<h2 align="center">Software Architecture</h2>
 <p align="center"><img src="docs/images/comp.jpg" alt="Home page" width="800"></p>
 
-(Click [here](https://github.com/ML4ITS/synthetic-data/blob/main/docs/images/arch.jpg) to view a more detailed architecture diagram)
-
 </br>
+<h2 align="center">Docker Structure</h2>
+<p align="center"><img src="docs/images/arch.jpg" alt="Home page" width="800"></p>
+
 </br>
 
 ### How It Works
