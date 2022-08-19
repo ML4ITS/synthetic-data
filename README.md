@@ -177,13 +177,13 @@ The most straight forward way to evaluate the performance visually is to generat
 T-SNE and PCA are two slightly more uncommon ways of evaluating performance, but they could help discovery insights by displaying clusters visually. For instance, using PCA, we sample the original and generated data from purely using the 10 Hz condition.
 
 <h2 align="center">C-GAN: Condition on 10 Hz</h2>
-<p align="center"><img src="docs/evals/cgan_pca_10hz.png" alt="Home page" width="600"></p>
+<p align="center"><img src="docs/evals/pca_10hz.png" alt="Home page" width="600"></p>
 --
 
 ## Latent-space exploration
-To investigate how the models generalize as their presented to give various laten space inputs, we can by interpolation - change the latent space input to a range of values. The examples below shows output sequences based on a given latent space from 10 different distributions with 200 time steps between each one, following a spherical linear interpolation. For setup and how to perform these interpolations, see the [slerp.ipynb](https://github.com/ML4ITS/synthetic-data/blob/main/synthetic_data/mlops/slerp.ipynb) notebook.
+To investigate how the models generalize as they are presented various latent-space inputs, we can by interpolation, manipulate the inputs to discover different but similar sequence generations. The examples below shows output sequences based on a given latent space from 10 different noise distributions with 200 spherical linear interpolation interpolations between each one. For setup and how to perform these interpolations, see the [slerp.ipynb](https://github.com/ML4ITS/synthetic-data/blob/main/synthetic_data/mlops/slerp.ipynb) notebook.
 
-Both models were trained on the same harmonic dataset, consisting of 10 000 time series even distributed between 1-10 Hz. Using conditions/labels, we can manipulate the latent space to make the generator output desired frequencies. 
+Both models were trained on the same multi-harmonic dataset, consisting of 10 000 time series evenly distributed between 1-10 Hz. Using conditions/labels, we can manipulate (embed) the input latent space to make the generator output desired frequencies. 
 
 <h2 align="center">WGAN-GP: latent space interpolation (slerp)</h2>
 <p align="center"><img src="docs/gifs/wgan_gp.gif" alt="Home page" width="800"></p>
